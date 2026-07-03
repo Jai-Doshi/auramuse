@@ -31,3 +31,6 @@ next-env.d.ts
 # OS specific files
 .DS_Store
 Thumbs.db
+
+# local uploads
+/public/uploads/
