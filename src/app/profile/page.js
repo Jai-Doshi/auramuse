@@ -79,9 +79,10 @@ export default function ProfilePage() {
   };
 
   // Upload local image helper
-  const uploadImageFile = async (file) => {
+  const uploadImageFile = async (file, type = 'actress') => {
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('type', type);
     const res = await fetch('/api/upload', {
       method: 'POST',
       body: formData
@@ -126,7 +127,7 @@ export default function ProfilePage() {
     }
     setSubmittingAct(true);
     try {
-      const uploadRes = await uploadImageFile(newAct.file);
+      const uploadRes = await uploadImageFile(newAct.file, 'actress');
       const res = await fetch('/api/db/actresses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

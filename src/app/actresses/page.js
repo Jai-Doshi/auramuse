@@ -109,9 +109,10 @@ export default function ActressesPage() {
     }
   };
 
-  const uploadImageFile = async (file) => {
+  const uploadImageFile = async (file, type = 'actress') => {
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('type', type);
     const res = await fetch('/api/upload', {
       method: 'POST',
       body: formData
@@ -133,7 +134,7 @@ export default function ActressesPage() {
     try {
       let profile_picture = null;
       if (editActress.file) {
-        const uploadRes = await uploadImageFile(editActress.file);
+        const uploadRes = await uploadImageFile(editActress.file, 'actress');
         profile_picture = uploadRes.url;
       }
 

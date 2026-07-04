@@ -127,9 +127,10 @@ export default function HomePage() {
   };
 
   // Helper: upload local image file
-  const uploadImageFile = async (file) => {
+  const uploadImageFile = async (file, type = 'ai-images') => {
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('type', type);
     const res = await fetch('/api/upload', {
       method: 'POST',
       body: formData
@@ -227,7 +228,7 @@ export default function HomePage() {
     setSubmitting(true);
     try {
       // 1. Upload profile pic
-      const uploadRes = await uploadImageFile(newActress.file);
+      const uploadRes = await uploadImageFile(newActress.file, 'actress');
 
       // 2. Create actress entry
       const res = await fetch('/api/db/actresses', {
@@ -264,7 +265,7 @@ export default function HomePage() {
     setSubmitting(true);
     try {
       // 1. Upload image file
-      const uploadRes = await uploadImageFile(newImage.file);
+      const uploadRes = await uploadImageFile(newImage.file, 'ai-images');
 
       // 2. Create DB entry
       const res = await fetch('/api/db/images', {
@@ -308,7 +309,7 @@ export default function HomePage() {
 
       let coverPoster = newStory.coverPosterUrl;
       if (newStory.coverPosterFile) {
-        const uploadRes = await uploadImageFile(newStory.coverPosterFile);
+        const uploadRes = await uploadImageFile(newStory.coverPosterFile, 'posters');
         coverPoster = uploadRes.url;
       }
       if (!coverPoster && newStory.selectedImages.length > 0) {

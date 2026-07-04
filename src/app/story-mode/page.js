@@ -39,9 +39,10 @@ export default function StoryModePage() {
     setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
   };
 
-  const uploadImageFile = async (file) => {
+  const uploadImageFile = async (file, type = 'posters') => {
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('type', type);
     const res = await fetch('/api/upload', {
       method: 'POST',
       body: formData
@@ -224,7 +225,7 @@ export default function StoryModePage() {
 
       let coverPoster = editStory.coverPosterUrl;
       if (editStory.coverPosterFile) {
-        const uploadRes = await uploadImageFile(editStory.coverPosterFile);
+        const uploadRes = await uploadImageFile(editStory.coverPosterFile, 'posters');
         coverPoster = uploadRes.url;
       }
 

@@ -66,3 +66,40 @@ CREATE INDEX IF NOT EXISTS idx_images_category_id ON images(category_id);
 CREATE INDEX IF NOT EXISTS idx_image_actresses_actress_id ON image_actresses(actress_id);
 CREATE INDEX IF NOT EXISTS idx_story_actresses_actress_id ON story_actresses(actress_id);
 CREATE INDEX IF NOT EXISTS idx_story_images_image_id ON story_images(image_id);
+
+-- =========================================================================
+-- ROW LEVEL SECURITY (RLS) FIXES
+-- Copy and run these commands in the Supabase SQL Query Editor to resolve policy violations.
+-- =========================================================================
+
+-- 1. Disable RLS on Database Tables (allows public reading/writing for personal local dashboard)
+ALTER TABLE categories DISABLE ROW LEVEL SECURITY;
+ALTER TABLE actresses DISABLE ROW LEVEL SECURITY;
+ALTER TABLE images DISABLE ROW LEVEL SECURITY;
+ALTER TABLE image_actresses DISABLE ROW LEVEL SECURITY;
+ALTER TABLE stories DISABLE ROW LEVEL SECURITY;
+ALTER TABLE story_actresses DISABLE ROW LEVEL SECURITY;
+ALTER TABLE story_images DISABLE ROW LEVEL SECURITY;
+
+-- 2. Configure Permissive Storage Policies for upload buckets
+-- (Ensure buckets 'actress', 'posters', and 'ai-images' are set to Public in Supabase Storage)
+
+CREATE POLICY "Allow Public Storage Select" 
+ON storage.objects FOR SELECT 
+TO public 
+USING (bucket_id IN ('actress', 'posters', 'ai-images'));
+
+CREATE POLICY "Allow Public Storage Insert" 
+ON storage.objects FOR INSERT 
+TO public 
+WITH CHECK (bucket_id IN ('actress', 'posters', 'ai-images'));
+
+CREATE POLICY "Allow Public Storage Update" 
+ON storage.objects FOR UPDATE 
+TO public 
+USING (bucket_id IN ('actress', 'posters', 'ai-images'));
+
+CREATE POLICY "Allow Public Storage Delete" 
+ON storage.objects FOR DELETE 
+TO public 
+USING (bucket_id IN ('actress', 'posters', 'ai-images'));
