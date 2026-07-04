@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Image as ImageIcon, Users, User, BookOpen, Sun, Moon } from 'lucide-react';
+import { Home, Crown, Image as ImageIcon, Users, User, BookOpen, Sun, Moon } from 'lucide-react';
 import { useTheme } from './ThemeContext';
 
 export default function Navbar() {
@@ -14,6 +14,7 @@ export default function Navbar() {
     { name: 'Home', path: '/', icon: Home },
     { name: 'Gallery', path: '/gallery', icon: ImageIcon },
     { name: 'Actresses', path: '/actresses', icon: Users },
+    { name: 'Story Mode', path: '/story-mode', icon: BookOpen },
     { name: 'Profile', path: '/profile', icon: User }
   ];
 
@@ -38,17 +39,14 @@ export default function Navbar() {
               >
                 <Icon size={20} className="nav-icon" />
                 <span className="nav-text">{item.name}</span>
+                {item.path === '/story-mode' && (
+                  <span className="badge-crown">
+                    <Crown size={18} className="text-yellow" />
+                  </span>
+                )}
               </Link>
             );
           })}
-
-          <Link
-            href="/story-mode"
-            className={`nav-link ${pathname === '/story-mode' ? 'active' : ''}`}
-          >
-            <BookOpen size={20} className="nav-icon" />
-            <span className="nav-text">Story Mode</span>
-          </Link>
         </nav>
 
         <div className="sidebar-footer">

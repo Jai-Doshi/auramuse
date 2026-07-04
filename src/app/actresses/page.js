@@ -136,7 +136,7 @@ export default function ActressesPage() {
         const uploadRes = await uploadImageFile(editActress.file);
         profile_picture = uploadRes.url;
       }
-      
+
       const res = await fetch(`/api/db/actresses/${editActress.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -239,16 +239,16 @@ export default function ActressesPage() {
           ) : (
             <div className="actress-grid">
               {actresses.map((actress) => (
-                <div 
-                  key={actress.id} 
+                <div
+                  key={actress.id}
                   className="actress-card"
                   onClick={() => setSelectedActress(actress)}
                 >
                   {/* Card Image Background (Full Bleed) */}
-                  <img 
-                    src={actress.profile_picture || '/logo.svg'} 
-                    alt={actress.name} 
-                    className="playing-card-bg-img" 
+                  <img
+                    src={actress.profile_picture || '/logo.png'}
+                    alt={actress.name}
+                    className="playing-card-bg-img"
                   />
                   {/* Card Shadow Gradient Overlay */}
                   <div className="playing-card-overlay"></div>
@@ -260,13 +260,13 @@ export default function ActressesPage() {
 
                   {/* Top-Right Faction Crest (Muse Icon) */}
                   <div className="playing-card-crest-right">
-                    <Sparkles size={12} />
+                    <Sparkles size={14} />
                   </div>
 
                   {/* Card Core Content (Middle to Bottom) */}
                   <div className="playing-card-content">
                     <h3 className="playing-card-name">{actress.name}</h3>
-                    
+
                     {/* Tiny dividing line */}
                     <div className="playing-card-divider">
                       <span className="playing-card-subtitle">AI MUSE</span>
@@ -483,11 +483,11 @@ export default function ActressesPage() {
               <div className="form-group">
                 <label>Profile Picture (Leave empty to keep current)</label>
                 <label className="upload-dropzone">
-                  <input 
-                    type="file" 
-                    accept="image/*" 
-                    style={{ display: 'none' }} 
-                    onChange={handleEditFileChange} 
+                  <input
+                    type="file"
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={handleEditFileChange}
                   />
                   {editActress.preview ? (
                     <img src={editActress.preview} alt="Profile preview" className="upload-preview" />
@@ -502,23 +502,23 @@ export default function ActressesPage() {
 
               <div className="form-group">
                 <label>Actress Name</label>
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  placeholder="Enter name" 
-                  value={editActress.name} 
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="Enter name"
+                  value={editActress.name}
                   onChange={(e) => setEditActress(prev => ({ ...prev, name: e.target.value }))}
-                  required 
+                  required
                 />
               </div>
 
               <div className="form-group">
                 <label>Biography / Story Context</label>
-                <textarea 
-                  className="form-textarea" 
-                  placeholder="Describe her background, universe, or specialties..." 
+                <textarea
+                  className="form-textarea"
+                  placeholder="Describe her background, universe, or specialties..."
                   style={{ minHeight: '120px' }}
-                  value={editActress.bio} 
+                  value={editActress.bio}
                   onChange={(e) => setEditActress(prev => ({ ...prev, bio: e.target.value }))}
                 />
               </div>
@@ -539,9 +539,9 @@ export default function ActressesPage() {
           <div className="modal-container" style={{ maxWidth: '400px' }}>
             <div className="modal-header">
               <span className="modal-title">{confirmModal.title}</span>
-              <button 
-                type="button" 
-                className="modal-close-btn" 
+              <button
+                type="button"
+                className="modal-close-btn"
                 onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
               >
                 <X size={20} />
@@ -553,16 +553,16 @@ export default function ActressesPage() {
               </p>
             </div>
             <div className="modal-footer" style={{ gap: '0.75rem' }}>
-              <button 
-                type="button" 
-                className="btn btn-secondary" 
+              <button
+                type="button"
+                className="btn btn-secondary"
                 onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
               >
                 Cancel
               </button>
-              <button 
-                type="button" 
-                className="btn btn-primary" 
+              <button
+                type="button"
+                className="btn btn-primary"
                 style={{ backgroundColor: '#ef4444', borderColor: '#ef4444' }}
                 onClick={() => {
                   confirmModal.onConfirm();

@@ -39,8 +39,12 @@ CREATE TABLE IF NOT EXISTS stories (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   title TEXT NOT NULL,
   content TEXT DEFAULT '',
+  cover_poster TEXT DEFAULT '',
   created_at TIMESTAMPTZ DEFAULT now()
 );
+
+-- Migration query for existing databases:
+-- ALTER TABLE stories ADD COLUMN IF NOT EXISTS cover_poster TEXT DEFAULT '';
 
 -- 6. Create story_actresses table (many-to-many)
 CREATE TABLE IF NOT EXISTS story_actresses (

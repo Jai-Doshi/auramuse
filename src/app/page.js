@@ -33,7 +33,7 @@ export default function HomePage() {
   // Form Fields
   const [newActress, setNewActress] = useState({ name: '', bio: '', file: null, preview: null });
   const [newImage, setNewImage] = useState({ prompt: '', categoryId: '', actressIds: [], file: null, preview: null });
-  const [newStory, setNewStory] = useState({ title: '', content: '', selectedActresses: [], selectedImages: [] }); // selectedImages is array of { id, url, description }
+  const [newStory, setNewStory] = useState({ title: '', content: '', selectedActresses: [], selectedImages: [], coverPosterUrl: '', coverPosterFile: null, coverPosterPreview: null }); // selectedImages is array of { id, url, description }
   const [newCategoryName, setNewCategoryName] = useState('');
   const [editingCategoryId, setEditingCategoryId] = useState(null);
   const [editingCategoryName, setEditingCategoryName] = useState('');
@@ -306,6 +306,15 @@ export default function HomePage() {
         description: img.description || ''
       }));
 
+      let coverPoster = newStory.coverPosterUrl;
+      if (newStory.coverPosterFile) {
+        const uploadRes = await uploadImageFile(newStory.coverPosterFile);
+        coverPoster = uploadRes.url;
+      }
+      if (!coverPoster && newStory.selectedImages.length > 0) {
+        coverPoster = newStory.selectedImages[0].url;
+      }
+
       const res = await fetch('/api/db/stories', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -313,7 +322,8 @@ export default function HomePage() {
           title: newStory.title,
           content: newStory.content,
           actress_ids: newStory.selectedActresses,
-          images: storyImages
+          images: storyImages,
+          cover_poster: coverPoster
         })
       });
 
@@ -322,7 +332,7 @@ export default function HomePage() {
         throw new Error(err.error || 'Failed to create story');
       }
 
-      setNewStory({ title: '', content: '', selectedActresses: [], selectedImages: [] });
+      setNewStory({ title: '', content: '', selectedActresses: [], selectedImages: [], coverPosterUrl: '', coverPosterFile: null, coverPosterPreview: null });
       setStoryModal(false);
       await fetchData();
       showToast('Story created successfully!', 'success');
@@ -815,6 +825,86 @@ export default function HomePage() {
                   onChange={(e) => setNewStory(prev => ({ ...prev, content: e.target.value }))}
                   required
                 />
+              </div>
+
+              <div className="form-group">
+                <label>Story Cover Poster</label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {/* Option A: Select from story's selected images */}
+                  {newStory.selectedImages.length > 0 && (
+                    <div>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.35rem' }}>
+                        Select from story illustrations:
+                      </span>
+                      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', background: 'var(--input-bg)', padding: '0.5rem', borderRadius: '10px', border: '1px solid var(--input-border)' }}>
+                        {newStory.selectedImages.map(img => {
+                          const isSelected = newStory.coverPosterUrl === img.url && !newStory.coverPosterFile;
+                          return (
+                            <div
+                              key={img.id}
+                              onClick={() => setNewStory(prev => ({ ...prev, coverPosterUrl: img.url, coverPosterFile: null, coverPosterPreview: null }))}
+                              style={{
+                                width: '60px',
+                                height: '60px',
+                                borderRadius: '6px',
+                                overflow: 'hidden',
+                                cursor: 'pointer',
+                                position: 'relative',
+                                border: isSelected ? '2.5px solid var(--accent-purple)' : '1.5px solid transparent'
+                              }}
+                            >
+                              <img src={img.url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Thumb" />
+                              {isSelected && (
+                                <div style={{ position: 'absolute', top: '2px', right: '2px', background: 'var(--accent-purple)', color: 'white', borderRadius: '50%', width: '14px', height: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  <Check size={8} />
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Option B: Upload a custom cover poster */}
+                  <div>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.35rem' }}>
+                      Or upload a custom cover poster:
+                    </span>
+                    <label className="upload-dropzone" style={{ minHeight: '100px', padding: '1rem' }}>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        style={{ display: 'none' }}
+                        onChange={(e) => {
+                          const file = e.target.files[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                              setNewStory(prev => ({
+                                ...prev,
+                                coverPosterFile: file,
+                                coverPosterPreview: reader.result,
+                                coverPosterUrl: ''
+                              }));
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                      />
+                      {newStory.coverPosterPreview ? (
+                        <img src={newStory.coverPosterPreview} alt="Cover preview" className="upload-preview" />
+                      ) : newStory.coverPosterUrl ? (
+                        <img src={newStory.coverPosterUrl} alt="Cover selection preview" className="upload-preview" />
+                      ) : (
+                        <>
+                          <UploadCloud className="upload-icon" size={24} />
+                          <span style={{ fontSize: '0.8rem' }}>Click to upload custom cover poster</span>
+                        </>
+                      )}
+                    </label>
+                  </div>
+                </div>
               </div>
 
               {/* Actresses Selection with Profile Pictures */}

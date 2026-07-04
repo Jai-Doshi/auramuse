@@ -377,7 +377,8 @@ export async function getStories() {
       return {
         ...story,
         actresses,
-        images
+        images,
+        cover_poster: story.cover_poster || (images[0]?.url || '')
       };
     });
   } else {
@@ -407,19 +408,20 @@ export async function getStories() {
       return {
         ...story,
         actresses,
-        images
+        images,
+        cover_poster: story.cover_poster || (images[0]?.url || '')
       };
     }).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   }
 }
 
-export async function createStory(title, content, actress_ids = [], images = []) {
+export async function createStory(title, content, actress_ids = [], images = [], cover_poster = '') {
   // images parameter is array of { image_id, description }
   if (isSupabaseConfigured) {
     // Insert Story
     const { data: story, error: storyError } = await supabase
       .from('stories')
-      .insert([{ title, content }])
+      .insert([{ title, content, cover_poster }])
       .select()
       .single();
     if (storyError) throw storyError;
@@ -457,6 +459,7 @@ export async function createStory(title, content, actress_ids = [], images = [])
       id: storyId,
       title,
       content,
+      cover_poster,
       created_at: new Date().toISOString()
     };
     db.stories.push(newStory);
@@ -653,11 +656,11 @@ export async function deleteImage(id) {
 }
 
 // D. Stories
-export async function updateStory(id, title, content, actress_ids = [], images = []) {
+export async function updateStory(id, title, content, actress_ids = [], images = [], cover_poster = '') {
   if (isSupabaseConfigured) {
     const { data: story, error: storyError } = await supabase
       .from('stories')
-      .update({ title, content })
+      .update({ title, content, cover_poster })
       .eq('id', id)
       .select()
       .single();
@@ -706,6 +709,7 @@ export async function updateStory(id, title, content, actress_ids = [], images =
 
     db.stories[index].title = title;
     db.stories[index].content = content;
+    db.stories[index].cover_poster = cover_poster;
 
     db.story_actresses = db.story_actresses.filter(sa => sa.story_id !== id);
     actress_ids.forEach(aid => {

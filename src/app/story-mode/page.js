@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { BookOpen, Sparkles, User, ImageIcon, Check, X } from 'lucide-react';
+import { BookOpen, Sparkles, User, ImageIcon, Check, X, ChevronLeft, ChevronRight, Edit2, Trash2, Plus, UploadCloud } from 'lucide-react';
 import Link from 'next/link';
 
 export default function StoryModePage() {
@@ -10,19 +10,47 @@ export default function StoryModePage() {
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedStory, setSelectedStory] = useState(null);
+  const [activePage, setActivePage] = useState(0);
 
   // Edit Story Modal States
   const [editStoryModal, setEditStoryModal] = useState(false);
-  const [editStory, setEditStory] = useState({ id: '', title: '', content: '', selectedActresses: [], selectedImages: [] });
+  const [editStory, setEditStory] = useState({
+    id: '',
+    title: '',
+    content: '',
+    coverPosterUrl: '',
+    coverPosterFile: null,
+    coverPosterPreview: null,
+    selectedActresses: [],
+    selectedImages: []
+  });
   const [submitting, setSubmitting] = useState(false);
 
   // Toast & Custom Confirm Modal States
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
 
+  // Touch Swipe States for Book Navigation
+  const [touchStart, setTouchStart] = useState(0);
+  const [touchEnd, setTouchEnd] = useState(0);
+
   const showToast = (message, type = 'success') => {
     setToast({ show: true, message, type });
     setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
+  };
+
+  const uploadImageFile = async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch('/api/upload', {
+      method: 'POST',
+      body: formData
+    });
+    if (!res.ok) {
+      const errData = await res.json();
+      throw new Error(errData.error || 'Failed to upload cover poster file');
+    }
+    return await res.json(); // returns { url, filename }
   };
 
   const fetchData = async () => {
@@ -41,16 +69,14 @@ export default function StoryModePage() {
       setActresses(actressData);
       setImages(imageData);
 
-      if (storyData.length > 0) {
-        setSelectedStory(prev => {
-          if (prev) {
-            const found = storyData.find(s => s.id === prev.id);
-            return found || storyData[0];
-          }
-          return storyData[0];
-        });
-      } else {
-        setSelectedStory(null);
+      // Keep selected story updated if it is currently open
+      if (selectedStory) {
+        const updatedStory = storyData.find(s => s.id === selectedStory.id);
+        if (updatedStory) {
+          setSelectedStory(updatedStory);
+        } else {
+          setSelectedStory(null);
+        }
       }
     } catch (e) {
       console.error('Error fetching story-mode data:', e);
@@ -63,11 +89,77 @@ export default function StoryModePage() {
     fetchData();
   }, []);
 
+  // Keyboard navigation for open book
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (!selectedStory) return;
+      if (e.key === 'ArrowLeft') {
+        prevPage();
+      } else if (e.key === 'ArrowRight') {
+        nextPage();
+      } else if (e.key === 'Escape') {
+        handleCloseStory();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [selectedStory, activePage]);
+
+  const handleOpenStory = (story) => {
+    setSelectedStory(story);
+    setActivePage(0);
+  };
+
+  const handleCloseStory = () => {
+    setSelectedStory(null);
+    setActivePage(0);
+  };
+
+  const nextPage = () => {
+    if (!selectedStory) return;
+    const totalSlides = (selectedStory.images?.length || 0) + 1; // cover slide (0) + images
+    if (activePage < totalSlides - 1) {
+      setActivePage(prev => prev + 1);
+    }
+  };
+
+  const prevPage = () => {
+    if (activePage > 0) {
+      setActivePage(prev => prev - 1);
+    }
+  };
+
+  // Touch Swipe Handlers for mobile swipe transitions
+  const handleTouchStart = (e) => {
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = (e) => {
+    setTouchEnd(e.changedTouches[0].clientX);
+    handleSwipe();
+  };
+
+  const handleSwipe = () => {
+    if (touchStart - touchEnd > 75) {
+      // Swiped Left -> Turn Page Next
+      nextPage();
+    }
+    if (touchStart - touchEnd < -75) {
+      // Swiped Right -> Turn Page Prev
+      prevPage();
+    }
+  };
+
   const handleOpenEditModal = (story) => {
     setEditStory({
       id: story.id,
       title: story.title,
       content: story.content || '',
+      coverPosterUrl: story.cover_poster || '',
+      coverPosterFile: null,
+      coverPosterPreview: null,
       selectedActresses: story.actresses?.map(a => a.id) || [],
       selectedImages: story.images?.map(img => ({
         id: img.id,
@@ -83,6 +175,8 @@ export default function StoryModePage() {
       const selected = prev.selectedActresses.includes(id)
         ? prev.selectedActresses.filter(aId => aId !== id)
         : [...prev.selectedActresses, id];
+
+      // If we remove an actress, filter out images that belong ONLY to the removed actress
       return { ...prev, selectedActresses: selected };
     });
   };
@@ -93,7 +187,13 @@ export default function StoryModePage() {
       const selected = isSelected
         ? prev.selectedImages.filter(i => i.id !== img.id)
         : [...prev.selectedImages, { id: img.id, url: img.url, description: '' }];
-      return { ...prev, selectedImages: selected };
+
+      // If we remove the cover poster image, reset it
+      let coverPoster = prev.coverPosterUrl;
+      if (isSelected && prev.coverPosterUrl === img.url) {
+        coverPoster = '';
+      }
+      return { ...prev, selectedImages: selected, coverPosterUrl: coverPoster };
     });
   };
 
@@ -122,6 +222,17 @@ export default function StoryModePage() {
         description: img.description || ''
       }));
 
+      let coverPoster = editStory.coverPosterUrl;
+      if (editStory.coverPosterFile) {
+        const uploadRes = await uploadImageFile(editStory.coverPosterFile);
+        coverPoster = uploadRes.url;
+      }
+
+      // Fallback to the first image if no cover is selected
+      if (!coverPoster && editStory.selectedImages.length > 0) {
+        coverPoster = editStory.selectedImages[0].url;
+      }
+
       const res = await fetch(`/api/db/stories/${editStory.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -129,7 +240,8 @@ export default function StoryModePage() {
           title: editStory.title,
           content: editStory.content,
           actress_ids: editStory.selectedActresses,
-          images: storyImages
+          images: storyImages,
+          cover_poster: coverPoster
         })
       });
 
@@ -152,14 +264,14 @@ export default function StoryModePage() {
     setConfirmModal({
       isOpen: true,
       title: 'Delete Story',
-      message: 'Are you sure you want to delete this story?',
+      message: 'Are you sure you want to delete this story? This action cannot be undone.',
       onConfirm: async () => {
         try {
           const res = await fetch(`/api/db/stories/${id}`, {
             method: 'DELETE'
           });
           if (res.ok) {
-            setSelectedStory(null);
+            handleCloseStory();
             await fetchData();
             showToast('Story deleted successfully!', 'success');
           } else {
@@ -179,22 +291,18 @@ export default function StoryModePage() {
         <div className="section-header">
           <div className="shimmer-card shimmer-title" style={{ width: '280px', height: '32px' }}></div>
         </div>
-        <div className="shimmer-story-layout">
-          <div className="shimmer-card" style={{ height: '400px', borderRadius: '16px' }}></div>
-          <div className="shimmer-card-el" style={{ height: '400px', borderRadius: '16px', justifyContent: 'flex-start' }}>
-            <div className="shimmer-card shimmer-title" style={{ width: '60%', height: '28px', marginBottom: '1.5rem' }}></div>
-            <div className="shimmer-card shimmer-text" style={{ height: '20px', marginBottom: '1rem' }}></div>
-            <div className="shimmer-card shimmer-text" style={{ height: '20px', marginBottom: '1rem' }}></div>
-            <div className="shimmer-card shimmer-text" style={{ height: '20px', marginBottom: '1rem' }}></div>
-            <div className="shimmer-card shimmer-text" style={{ height: '20px', width: '70%' }}></div>
-          </div>
+        <div className="story-masonry-gallery">
+          <div className="shimmer-card" style={{ height: '320px', borderRadius: '16px', marginBottom: '1.5rem' }}></div>
+          <div className="shimmer-card" style={{ height: '400px', borderRadius: '16px', marginBottom: '1.5rem' }}></div>
+          <div className="shimmer-card" style={{ height: '280px', borderRadius: '16px', marginBottom: '1.5rem' }}></div>
+          <div className="shimmer-card" style={{ height: '360px', borderRadius: '16px', marginBottom: '1.5rem' }}></div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="fade-in">
+    <div className="fade-in" style={{ position: 'relative', minHeight: '80vh' }}>
       <div className="section-header">
         <h1 className="section-title">Immersive Story Mode</h1>
       </div>
@@ -203,105 +311,268 @@ export default function StoryModePage() {
         <div className="glass-card story-empty-state" style={{ minHeight: '350px' }}>
           <BookOpen size={48} className="text-muted" />
           <h3>No stories created yet</h3>
-          <p>Go to the Home Page or Profile Page to write a new actress lore story.</p>
+          <p>Go to the Dashboard to write a new actress lore story.</p>
           <Link href="/" className="btn btn-primary" style={{ marginTop: '1rem' }}>
             Go to Dashboard
           </Link>
         </div>
       ) : (
-        <div className="story-layout">
-          {/* Left Panel: Selector */}
-          <div className="story-selector">
-            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', marginBottom: '0.5rem' }}>Story Files</h3>
-            {stories.map((story) => {
-              const isActive = selectedStory && selectedStory.id === story.id;
-              const actressNames = story.actresses?.map(a => a.name).join(', ') || 'Unknown';
-              return (
-                <button 
-                  key={story.id}
-                  className={`story-selector-item ${isActive ? 'active' : ''}`}
-                  onClick={() => setSelectedStory(story)}
-                >
-                  <div className="story-selector-title">{story.title}</div>
-                  <div className="story-selector-actresses">Featuring: {actressNames}</div>
+        /* Masonry styled gallery of stories */
+        <div className="story-masonry-gallery">
+          {stories.map((story) => {
+            const pageCount = story.images?.length || 0;
+            const coverPoster = story.cover_poster || '/logo.png';
+
+            return (
+              <div
+                key={story.id}
+                className="story-masonry-card"
+                onClick={() => handleOpenStory(story)}
+              >
+                {/* Story cover poster */}
+                <img
+                  src={coverPoster}
+                  alt={story.title}
+                  className="story-masonry-cover"
+                  onError={(e) => {
+                    e.target.src = '/logo.png'; // fallback if image fails
+                  }}
+                />
+
+                {/* Top left corner: circles of actresses */}
+                <div className="story-card-actresses">
+                  {story.actresses?.slice(0, 4).map((actress, idx) => (
+                    <img
+                      key={actress.id}
+                      src={actress.profile_picture || '/logo.svg'}
+                      alt={actress.name}
+                      className="story-card-actress-avatar"
+                      style={{
+                        marginLeft: idx === 0 ? '0' : '-10px',
+                        zIndex: 10 - idx
+                      }}
+                      title={actress.name}
+                    />
+                  ))}
+                  {story.actresses?.length > 4 && (
+                    <div
+                      className="story-card-actress-avatar"
+                      style={{
+                        marginLeft: '-10px',
+                        zIndex: 5,
+                        background: 'var(--bg-secondary)',
+                        color: 'var(--text-primary)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '0.65rem',
+                        fontWeight: '700'
+                      }}
+                    >
+                      +{story.actresses.length - 4}
+                    </div>
+                  )}
+                </div>
+
+                {/* Top right corner: total page/images counter */}
+                <div className="story-card-page-count">
+                  <BookOpen size={12} style={{ color: 'var(--accent-purple)' }} />
+                  <span>{pageCount} page{pageCount !== 1 ? 's' : ''}</span>
+                </div>
+
+                {/* Hover overlay showing title, description, and actions */}
+                <div className="story-card-overlay">
+                  <div className="story-card-overlay-content">
+                    <h3 className="story-card-title">{story.title}</h3>
+
+                    <p className="story-card-desc">
+                      {story.content && story.content.length > 120
+                        ? `${story.content.substring(0, 120)}...`
+                        : story.content}
+                    </p>
+
+                    <div className="story-card-actions" onClick={(e) => e.stopPropagation()}>
+                      <button className="btn btn-primary btn-sm" onClick={() => handleOpenStory(story)}>
+                        Read Story
+                      </button>
+                      <button className="btn-sm-icon" onClick={() => handleOpenEditModal(story)} title="Edit Story">
+                        <Edit2 size={13} />
+                      </button>
+                      <button className="btn-sm-icon btn-danger" onClick={() => handleDeleteStory(story.id)} title="Delete Story">
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* --- IMMERSIVE BOOK CAROUSEL VIEW MODAL --- */}
+      {selectedStory && (
+        <div className="book-overlay" style={{ display: 'flex' }}>
+          <div className="book-overlay-backdrop" onClick={handleCloseStory}></div>
+
+          <div className="book-viewer-container">
+            {/* Top Toolbar */}
+            <div className="book-viewer-header">
+              <div className="book-title-area">
+                <h2>{selectedStory.title}</h2>
+              </div>
+              <div className="book-actions-area">
+                <button className="btn btn-secondary btn-sm" onClick={() => handleOpenEditModal(selectedStory)}>
+                  Edit Story
                 </button>
-              );
-            })}
-          </div>
+                <button className="btn btn-outline btn-sm btn-danger" onClick={() => handleDeleteStory(selectedStory.id)}>
+                  Delete Story
+                </button>
+                <button className="book-close-btn" onClick={handleCloseStory}>
+                  <X size={26} />
+                </button>
+              </div>
+            </div>
 
-          {/* Right Panel: Immersive Content Viewport */}
-          <div className="story-content-viewport">
-            {selectedStory ? (
-              <div className="glass-card" style={{ padding: '2.5rem' }}>
-                {/* Header */}
-                <div className="story-immersive-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
-                  <div>
-                    <h2 className="story-immersive-title">{selectedStory.title}</h2>
-                    
-                    {/* Actress tags */}
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '1rem' }}>
-                      {selectedStory.actresses?.map(actress => (
-                        <Link 
-                          key={actress.id} 
-                          href="/actresses"
-                          className="badge badge-purple"
-                          style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
-                        >
-                          <User size={12} />
-                          {actress.name}
-                        </Link>
-                      ))}
+            {/* Book Spine Frame */}
+            <div
+              className="book-frame"
+              onTouchStart={handleTouchStart}
+              onTouchEnd={handleTouchEnd}
+            >
+              <div className="book-pages-wrapper">
+                {activePage === 0 ? (
+                  /* COVER / INTRO SLIDE */
+                  <div className="book-slide fade-in-slide">
+                    {/* Left Page: Cover Poster image */}
+                    <div className="book-page book-page-left book-page-cover-img">
+                      <img
+                        src={selectedStory.cover_poster || (selectedStory.images?.[0]?.url || '/logo.png')}
+                        alt="Story Cover"
+                        className="book-cover-img"
+                      />
                     </div>
-                  </div>
 
-                  {/* Actions */}
-                  <div style={{ display: 'flex', gap: '0.75rem' }}>
-                    <button className="btn btn-secondary" onClick={() => handleOpenEditModal(selectedStory)}>
-                      Edit Story
-                    </button>
-                    <button className="btn btn-outline" style={{ borderColor: '#ef4444', color: '#ef4444' }} onClick={() => handleDeleteStory(selectedStory.id)}>
-                      Delete Story
-                    </button>
-                  </div>
-                </div>
+                    {/* Crease Fold effect */}
+                    <div className="book-crease"></div>
 
-                {/* Narrative text content */}
-                <div style={{ marginTop: '2rem' }}>
-                  <p className="story-body-text">{selectedStory.content}</p>
-                </div>
+                    {/* Right Page: Book Title & narrative intro */}
+                    <div className="book-page book-page-right">
+                      <div className="book-content-container">
+                        <span className="book-genre-tag">Actress Universe Lore</span>
+                        <h1 className="book-title-display">{selectedStory.title}</h1>
 
-                {/* Linked images list */}
-                {selectedStory.images && selectedStory.images.length > 0 && (
-                  <div className="story-image-showcase">
-                    <h3 style={{ fontFamily: 'var(--font-display)', borderBottom: '1px solid var(--border-glass)', paddingBottom: '0.75rem', marginBottom: '1.5rem' }}>
-                      Storyboard Graphics
-                    </h3>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                      {selectedStory.images.map((img) => (
-                        <div key={img.id} className="story-image-card">
-                          <div className="story-image-wrapper">
-                            <img src={img.url} className="story-image-el" alt="Story Graphic" />
+                        <div className="book-featured-actresses">
+                          <span className="book-sub-label">Featured Actresses</span>
+                          <div className="book-actresses-row">
+                            {selectedStory.actresses?.map(act => (
+                              <div key={act.id} className="book-actress-chip">
+                                <img src={act.profile_picture || '/logo.svg'} alt={act.name} className="book-actress-avatar" />
+                                <span>{act.name}</span>
+                              </div>
+                            ))}
                           </div>
-                          {img.description && (
-                            <div className="story-image-caption">
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontStyle: 'normal', color: 'var(--accent-purple)', fontWeight: '600', textTransform: 'uppercase', fontSize: '0.75rem', marginBottom: '0.25rem' }}>
-                                <ImageIcon size={12} /> Illustration Context
-                              </span>
-                              <p>{img.description}</p>
-                            </div>
-                          )}
                         </div>
-                      ))}
+
+                        <div className="book-narrative-intro">
+                          <p>{selectedStory.content}</p>
+                        </div>
+                      </div>
                     </div>
                   </div>
+                ) : (
+                  /* STORY IMAGE DETAILS SLIDES */
+                  (() => {
+                    const imgIdx = activePage - 1;
+                    const currentImg = selectedStory.images?.[imgIdx];
+                    if (!currentImg) return null;
+                    return (
+                      <div className="book-slide fade-in-slide" key={currentImg.id}>
+                        {/* Left Page: Image view */}
+                        <div className="book-page book-page-left">
+                          <div className="book-image-container">
+                            <img src={currentImg.url} alt={`Illustration ${activePage}`} className="book-story-img" />
+                          </div>
+                        </div>
+
+                        {/* Crease fold effect */}
+                        <div className="book-crease"></div>
+
+                        {/* Right Page: Image context description */}
+                        <div className="book-page book-page-right">
+                          <div className="book-content-container">
+                            <div className="book-page-number">Illustration {activePage} of {selectedStory.images.length}</div>
+
+                            <div className="book-illustration-caption">
+                              <span className="book-caption-label">Illustration context</span>
+                              <p className="book-caption-text">
+                                {currentImg.description || "No context has been written for this frame yet. Add descriptions in Edit Mode to build out the details of this story scene."}
+                              </p>
+                            </div>
+
+                            {currentImg.prompt && (
+                              <div className="book-illustration-prompt">
+                                <span className="book-prompt-label">AI Generation Prompt</span>
+                                <p className="book-prompt-text">"{currentImg.prompt}"</p>
+                              </div>
+                            )}
+
+                            {currentImg.actresses && currentImg.actresses.length > 0 && (
+                              <div style={{ marginTop: '1.5rem' }}>
+                                <span className="book-prompt-label">Featured in Graphic</span>
+                                <div className="book-actresses-row" style={{ marginTop: '0.4rem' }}>
+                                  {currentImg.actresses.map(act => (
+                                    <div key={act.id} className="book-actress-chip">
+                                      <img src={act.profile_picture || '/logo.svg'} alt={act.name} className="book-actress-avatar" />
+                                      <span style={{ fontSize: '0.75rem' }}>{act.name}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()
                 )}
               </div>
-            ) : (
-              <div className="glass-card story-empty-state">
-                <BookOpen size={48} className="text-muted" />
-                <h3>Select a story file from the index to begin.</h3>
+
+              {/* Navigation Arrows inside book frame */}
+              {activePage > 0 && (
+                <button className="book-nav-btn book-nav-btn-left" onClick={prevPage} title="Previous Page">
+                  <ChevronLeft size={24} />
+                </button>
+              )}
+
+              {activePage < (selectedStory.images?.length || 0) && (
+                <button className="book-nav-btn book-nav-btn-right" onClick={nextPage} title="Next Page">
+                  <ChevronRight size={24} />
+                </button>
+              )}
+            </div>
+
+            {/* Bottom Page Indicator and dot navigation */}
+            <div className="book-viewer-footer">
+              <div className="book-page-indicator">
+                Page {activePage + 1} of {(selectedStory.images?.length || 0) + 1}
               </div>
-            )}
+              <div className="book-dots-nav">
+                <button
+                  className={`book-dot-btn ${activePage === 0 ? 'active' : ''}`}
+                  onClick={() => setActivePage(0)}
+                  title="Cover"
+                />
+                {selectedStory.images?.map((_, idx) => (
+                  <button
+                    key={idx}
+                    className={`book-dot-btn ${activePage === idx + 1 ? 'active' : ''}`}
+                    onClick={() => setActivePage(idx + 1)}
+                    title={`Illustration ${idx + 1}`}
+                  />
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -341,6 +612,87 @@ export default function StoryModePage() {
                 />
               </div>
 
+              {/* Cover Poster Selector */}
+              <div className="form-group">
+                <label>Story Cover Poster</label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {/* Select from selected images */}
+                  {editStory.selectedImages.length > 0 && (
+                    <div>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.35rem' }}>
+                        Choose from story graphics:
+                      </span>
+                      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', background: 'var(--input-bg)', padding: '0.5rem', borderRadius: '10px', border: '1px solid var(--input-border)' }}>
+                        {editStory.selectedImages.map(img => {
+                          const isSelected = editStory.coverPosterUrl === img.url && !editStory.coverPosterFile;
+                          return (
+                            <div
+                              key={img.id}
+                              onClick={() => setEditStory(prev => ({ ...prev, coverPosterUrl: img.url, coverPosterFile: null, coverPosterPreview: null }))}
+                              style={{
+                                width: '60px',
+                                height: '60px',
+                                borderRadius: '6px',
+                                overflow: 'hidden',
+                                cursor: 'pointer',
+                                position: 'relative',
+                                border: isSelected ? '2.5px solid var(--accent-purple)' : '1.5px solid transparent'
+                              }}
+                            >
+                              <img src={img.url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Story thumbnail" />
+                              {isSelected && (
+                                <div style={{ position: 'absolute', top: '2px', right: '2px', background: 'var(--accent-purple)', color: 'white', borderRadius: '50%', width: '14px', height: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  <Check size={8} />
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Upload a custom cover */}
+                  <div>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.35rem' }}>
+                      Or upload a custom cover poster image:
+                    </span>
+                    <label className="upload-dropzone" style={{ minHeight: '100px', padding: '1rem' }}>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        style={{ display: 'none' }}
+                        onChange={(e) => {
+                          const file = e.target.files[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                              setEditStory(prev => ({
+                                ...prev,
+                                coverPosterFile: file,
+                                coverPosterPreview: reader.result,
+                                coverPosterUrl: ''
+                              }));
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                      />
+                      {editStory.coverPosterPreview ? (
+                        <img src={editStory.coverPosterPreview} alt="Cover preview" className="upload-preview" />
+                      ) : editStory.coverPosterUrl ? (
+                        <img src={editStory.coverPosterUrl} alt="Cover Selection preview" className="upload-preview" />
+                      ) : (
+                        <>
+                          <UploadCloud className="upload-icon" size={24} />
+                          <span style={{ fontSize: '0.8rem' }}>Upload custom cover poster</span>
+                        </>
+                      )}
+                    </label>
+                  </div>
+                </div>
+              </div>
+
               {/* Actresses Selection with Profile Pictures */}
               <div className="form-group">
                 <label>Featured AI Actresses (Multi-Select)</label>
@@ -365,7 +717,7 @@ export default function StoryModePage() {
                 </div>
               </div>
 
-              {/* Associated Images Selection (Checks for image-actress intersections) */}
+              {/* Associated Images Selection */}
               <div className="form-group">
                 <label>Select Graphics Used in this Story</label>
                 {editStory.selectedActresses.length === 0 ? (
@@ -429,9 +781,9 @@ export default function StoryModePage() {
           <div className="modal-container" style={{ maxWidth: '400px' }}>
             <div className="modal-header">
               <span className="modal-title">{confirmModal.title}</span>
-              <button 
-                type="button" 
-                className="modal-close-btn" 
+              <button
+                type="button"
+                className="modal-close-btn"
                 onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
               >
                 <X size={20} />
@@ -443,16 +795,16 @@ export default function StoryModePage() {
               </p>
             </div>
             <div className="modal-footer" style={{ gap: '0.75rem' }}>
-              <button 
-                type="button" 
-                className="btn btn-secondary" 
+              <button
+                type="button"
+                className="btn btn-secondary"
                 onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
               >
                 Cancel
               </button>
-              <button 
-                type="button" 
-                className="btn btn-primary" 
+              <button
+                type="button"
+                className="btn btn-primary"
                 style={{ backgroundColor: '#ef4444', borderColor: '#ef4444' }}
                 onClick={() => {
                   confirmModal.onConfirm();
