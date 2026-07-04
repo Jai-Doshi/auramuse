@@ -22,7 +22,6 @@ CREATE TABLE IF NOT EXISTS images (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   url TEXT NOT NULL,
   prompt TEXT NOT NULL,
-  category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
   favorite BOOLEAN DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT now()
 );
@@ -32,6 +31,13 @@ CREATE TABLE IF NOT EXISTS image_actresses (
   image_id UUID REFERENCES images(id) ON DELETE CASCADE,
   actress_id UUID REFERENCES actresses(id) ON DELETE CASCADE,
   PRIMARY KEY (image_id, actress_id)
+);
+
+-- 4b. Create image_categories table (many-to-many linking images to multiple categories)
+CREATE TABLE IF NOT EXISTS image_categories (
+  image_id UUID REFERENCES images(id) ON DELETE CASCADE,
+  category_id UUID REFERENCES categories(id) ON DELETE CASCADE,
+  PRIMARY KEY (image_id, category_id)
 );
 
 -- 5. Create stories table
@@ -62,7 +68,7 @@ CREATE TABLE IF NOT EXISTS story_images (
 );
 
 -- Enable indexes for faster query performance
-CREATE INDEX IF NOT EXISTS idx_images_category_id ON images(category_id);
+CREATE INDEX IF NOT EXISTS idx_image_categories_category_id ON image_categories(category_id);
 CREATE INDEX IF NOT EXISTS idx_image_actresses_actress_id ON image_actresses(actress_id);
 CREATE INDEX IF NOT EXISTS idx_story_actresses_actress_id ON story_actresses(actress_id);
 CREATE INDEX IF NOT EXISTS idx_story_images_image_id ON story_images(image_id);
@@ -77,9 +83,21 @@ ALTER TABLE categories DISABLE ROW LEVEL SECURITY;
 ALTER TABLE actresses DISABLE ROW LEVEL SECURITY;
 ALTER TABLE images DISABLE ROW LEVEL SECURITY;
 ALTER TABLE image_actresses DISABLE ROW LEVEL SECURITY;
+ALTER TABLE image_categories DISABLE ROW LEVEL SECURITY;
 ALTER TABLE stories DISABLE ROW LEVEL SECURITY;
 ALTER TABLE story_actresses DISABLE ROW LEVEL SECURITY;
 ALTER TABLE story_images DISABLE ROW LEVEL SECURITY;
+
+-- Migration script for existing database:
+-- CREATE TABLE IF NOT EXISTS image_categories (
+--   image_id UUID REFERENCES images(id) ON DELETE CASCADE,
+--   category_id UUID REFERENCES categories(id) ON DELETE CASCADE,
+--   PRIMARY KEY (image_id, category_id)
+-- );
+-- CREATE INDEX IF NOT EXISTS idx_image_categories_category_id ON image_categories(category_id);
+-- ALTER TABLE image_categories DISABLE ROW LEVEL SECURITY;
+-- INSERT INTO image_categories (image_id, category_id) SELECT id, category_id FROM images WHERE category_id IS NOT NULL ON CONFLICT DO NOTHING;
+-- ALTER TABLE images DROP COLUMN IF EXISTS category_id;
 
 -- 2. Configure Permissive Storage Policies for upload buckets
 -- (Ensure buckets 'actress', 'posters', and 'ai-images' are set to Public in Supabase Storage)

@@ -804,7 +804,7 @@ h6 {
   position: relative;
   border-radius: var(--card-radius);
   overflow: hidden;
-  aspect-ratio: 4/5;
+  /* aspect-ratio: 4/5; */
   cursor: pointer;
   box-shadow: var(--glass-shadow);
   border: 1px solid var(--border-glass);

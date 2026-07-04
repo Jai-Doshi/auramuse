@@ -61,6 +61,22 @@ function ensureLocalDb() {
         });
         modified = true;
       }
+      if (!data.image_categories) {
+        data.image_categories = [];
+        modified = true;
+      }
+      // If there are existing images, migrate their category_id to image_categories
+      if (data.images && data.images.length > 0 && data.image_categories.length === 0) {
+        data.images.forEach(img => {
+          if (img.category_id) {
+            data.image_categories.push({
+              image_id: img.id,
+              category_id: img.category_id
+            });
+          }
+        });
+        modified = true;
+      }
       if (modified) {
         fs.writeFileSync(dbFilePath, JSON.stringify(data, null, 2), 'utf8');
       }
@@ -217,9 +233,15 @@ export async function getImages() {
     // Get all images
     const { data: images, error } = await supabase
       .from('images')
-      .select('*, category:categories(*)')
+      .select('*')
       .order('created_at', { ascending: false });
     if (error) throw error;
+
+    // Get all image category links
+    const { data: imageCategories, error: icError } = await supabase
+      .from('image_categories')
+      .select('*, category:categories(*)');
+    if (icError) throw icError;
 
     // Get all image actress links
     const { data: imageActresses, error: iaError } = await supabase
@@ -228,43 +250,63 @@ export async function getImages() {
     if (iaError) throw iaError;
 
     return images.map(img => {
+      const categories = imageCategories
+        .filter(ic => ic.image_id === img.id)
+        .map(ic => ic.category);
       const actresses = imageActresses
         .filter(ia => ia.image_id === img.id)
         .map(ia => ia.actress);
       return {
         ...img,
+        categories,
         actresses
       };
     });
   } else {
     const db = readLocalDb();
     if (!db.image_actresses) db.image_actresses = [];
+    if (!db.image_categories) db.image_categories = [];
     return db.images.map(img => {
-      const category = db.categories.find(c => c.id === img.category_id) || null;
+      const categories = db.image_categories
+        .filter(ic => ic.image_id === img.id)
+        .map(ic => db.categories.find(c => c.id === ic.category_id))
+        .filter(Boolean);
       const actresses = db.image_actresses
         .filter(ia => ia.image_id === img.id)
         .map(ia => db.actresses.find(a => a.id === ia.actress_id))
         .filter(Boolean);
       return {
         ...img,
-        category,
+        categories,
         actresses
       };
     }).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   }
 }
 
-export async function createImage(url, prompt, category_id, actress_ids = []) {
+export async function createImage(url, prompt, category_ids = [], actress_ids = []) {
   if (isSupabaseConfigured) {
     // 1. Insert Image
     const { data: image, error } = await supabase
       .from('images')
-      .insert([{ url, prompt, category_id, favorite: false }])
+      .insert([{ url, prompt, favorite: false }])
       .select()
       .single();
     if (error) throw error;
 
-    // 2. Link multiple actresses
+    // 2. Link multiple categories
+    if (category_ids.length > 0) {
+      const mappings = category_ids.map(cid => ({
+        image_id: image.id,
+        category_id: cid
+      }));
+      const { error: icError } = await supabase
+        .from('image_categories')
+        .insert(mappings);
+      if (icError) throw icError;
+    }
+
+    // 3. Link multiple actresses
     if (actress_ids.length > 0) {
       const mappings = actress_ids.map(aid => ({
         image_id: image.id,
@@ -279,16 +321,24 @@ export async function createImage(url, prompt, category_id, actress_ids = []) {
   } else {
     const db = readLocalDb();
     if (!db.image_actresses) db.image_actresses = [];
+    if (!db.image_categories) db.image_categories = [];
     const imageId = generateUUID();
     const newImage = {
       id: imageId,
       url,
       prompt,
-      category_id,
       favorite: false,
       created_at: new Date().toISOString()
     };
     db.images.push(newImage);
+
+    // Link categories
+    category_ids.forEach(cid => {
+      db.image_categories.push({
+        image_id: imageId,
+        category_id: cid
+      });
+    });
 
     // Link actresses
     actress_ids.forEach(aid => {
@@ -580,9 +630,9 @@ export async function deleteActress(id) {
 }
 
 // C. Images
-export async function updateImage(id, url, prompt, category_id, actress_ids = []) {
+export async function updateImage(id, url, prompt, category_ids = [], actress_ids = []) {
   if (isSupabaseConfigured) {
-    const updateObj = { prompt, category_id };
+    const updateObj = { prompt };
     if (url) updateObj.url = url;
     
     const { data: image, error } = await supabase
@@ -593,6 +643,25 @@ export async function updateImage(id, url, prompt, category_id, actress_ids = []
       .single();
     if (error) throw error;
 
+    // Update categories link table
+    const { error: delCatError } = await supabase
+      .from('image_categories')
+      .delete()
+      .eq('image_id', id);
+    if (delCatError) throw delCatError;
+
+    if (category_ids.length > 0) {
+      const mappings = category_ids.map(cid => ({
+        image_id: id,
+        category_id: cid
+      }));
+      const { error: insCatError } = await supabase
+        .from('image_categories')
+        .insert(mappings);
+      if (insCatError) throw insCatError;
+    }
+
+    // Update actresses link table
     const { error: delError } = await supabase
       .from('image_actresses')
       .delete()
@@ -616,9 +685,19 @@ export async function updateImage(id, url, prompt, category_id, actress_ids = []
     if (index === -1) throw new Error('Image not found');
     
     db.images[index].prompt = prompt;
-    db.images[index].category_id = category_id || null;
     if (url) db.images[index].url = url;
 
+    // Update local categories
+    if (!db.image_categories) db.image_categories = [];
+    db.image_categories = db.image_categories.filter(ic => ic.image_id !== id);
+    category_ids.forEach(cid => {
+      db.image_categories.push({
+        image_id: id,
+        category_id: cid
+      });
+    });
+
+    // Update local actresses
     if (!db.image_actresses) db.image_actresses = [];
     db.image_actresses = db.image_actresses.filter(ia => ia.image_id !== id);
     actress_ids.forEach(aid => {
@@ -646,6 +725,9 @@ export async function deleteImage(id) {
     db.images = db.images.filter(img => img.id !== id);
     if (db.image_actresses) {
       db.image_actresses = db.image_actresses.filter(ia => ia.image_id !== id);
+    }
+    if (db.image_categories) {
+      db.image_categories = db.image_categories.filter(ic => ic.image_id !== id);
     }
     if (db.story_images) {
       db.story_images = db.story_images.filter(si => si.image_id !== id);

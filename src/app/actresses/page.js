@@ -239,25 +239,29 @@ export default function ActressesPage() {
             </div>
           ) : (
             <div className="actress-grid">
-              {actresses.map((actress) => (
-                <div
-                  key={actress.id}
-                  className="actress-card"
-                  onClick={() => setSelectedActress(actress)}
-                >
-                  {/* Card Image Background (Full Bleed) */}
-                  <img
-                    src={actress.profile_picture || '/logo.png'}
-                    alt={actress.name}
-                    className="playing-card-bg-img"
-                  />
-                  {/* Card Shadow Gradient Overlay */}
-                  <div className="playing-card-overlay"></div>
+              {(() => {
+                const sortedByImages = [...actresses].sort((a, b) => (b.raw_image_count || 0) - (a.raw_image_count || 0));
+                return actresses.map((actress) => {
+                  const rank = sortedByImages.findIndex(a => a.id === actress.id) + 1;
+                  return (
+                    <div
+                      key={actress.id}
+                      className="actress-card"
+                      onClick={() => setSelectedActress(actress)}
+                    >
+                      {/* Card Image Background (Full Bleed) */}
+                      <img
+                        src={actress.profile_picture || '/logo.png'}
+                        alt={actress.name}
+                        className="playing-card-bg-img"
+                      />
+                      {/* Card Shadow Gradient Overlay */}
+                      <div className="playing-card-overlay"></div>
 
-                  {/* Top-Left Circular Gem (Power Level / Image Count) */}
-                  <div className="playing-card-gem-left">
-                    <span>{actress.raw_image_count}</span>
-                  </div>
+                      {/* Top-Left Circular Gem (Power Level / Priority Rank) */}
+                      <div className="playing-card-gem-left">
+                        <span>{rank}</span>
+                      </div>
 
                   {/* Top-Right Faction Crest (Muse Icon) */}
                   <div className="playing-card-crest-right">
@@ -294,7 +298,9 @@ export default function ActressesPage() {
                     </div>
                   </div>
                 </div>
-              ))}
+                  );
+                });
+              })()}
             </div>
           )}
         </>

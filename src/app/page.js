@@ -32,7 +32,7 @@ export default function HomePage() {
 
   // Form Fields
   const [newActress, setNewActress] = useState({ name: '', bio: '', file: null, preview: null });
-  const [newImage, setNewImage] = useState({ prompt: '', categoryId: '', actressIds: [], file: null, preview: null });
+  const [newImage, setNewImage] = useState({ prompt: '', categoryIds: [], actressIds: [], file: null, preview: null });
   const [newStory, setNewStory] = useState({ title: '', content: '', selectedActresses: [], selectedImages: [], coverPosterUrl: '', coverPosterFile: null, coverPosterPreview: null }); // selectedImages is array of { id, url, description }
   const [newCategoryName, setNewCategoryName] = useState('');
   const [editingCategoryId, setEditingCategoryId] = useState(null);
@@ -274,7 +274,7 @@ export default function HomePage() {
         body: JSON.stringify({
           url: uploadRes.url,
           prompt: newImage.prompt,
-          category_id: newImage.categoryId || null,
+          category_ids: newImage.categoryIds,
           actress_ids: newImage.actressIds
         })
       });
@@ -282,7 +282,7 @@ export default function HomePage() {
         const err = await res.json();
         throw new Error(err.error || 'Failed to save image');
       }
-      setNewImage({ prompt: '', categoryId: '', actressIds: [], file: null, preview: null });
+      setNewImage({ prompt: '', categoryIds: [], actressIds: [], file: null, preview: null });
       setImageModal(false);
       await fetchData();
       showToast('AI Graphic uploaded successfully!', 'success');
@@ -469,9 +469,11 @@ export default function HomePage() {
                     <span className="badge badge-purple" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
                       <Sparkles size={12} /> Prompt of the Day
                     </span>
-                    {dailyPromptImage.category && (
-                      <span className="badge badge-blue">{dailyPromptImage.category.name}</span>
-                    )}
+                    {dailyPromptImage.categories && dailyPromptImage.categories.map(cat => (
+                      <span key={cat.id} className="badge badge-blue" style={{ marginRight: '0.25rem' }}>
+                        {cat.name}
+                      </span>
+                    ))}
                   </div>
 
                   <div className="daily-prompt-text-container">
@@ -759,17 +761,29 @@ export default function HomePage() {
               </div>
 
               <div className="form-group">
-                <label>Category (Optional)</label>
-                <select
-                  className="form-select"
-                  value={newImage.categoryId}
-                  onChange={(e) => setNewImage(prev => ({ ...prev, categoryId: e.target.value }))}
-                >
-                  <option value="">-- Select Category --</option>
-                  {categories.map(cat => (
-                    <option key={cat.id} value={cat.id}>{cat.name}</option>
-                  ))}
-                </select>
+                <label>Categories (Select Multiple)</label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-glass)', padding: '0.6rem', borderRadius: '10px' }}>
+                  {categories.map(cat => {
+                    const isSelected = newImage.categoryIds.includes(cat.id);
+                    return (
+                      <div
+                        key={cat.id}
+                        onClick={() => {
+                          setNewImage(prev => {
+                            const ids = prev.categoryIds.includes(cat.id)
+                              ? prev.categoryIds.filter(id => id !== cat.id)
+                              : [...prev.categoryIds, cat.id];
+                            return { ...prev, categoryIds: ids };
+                          });
+                        }}
+                        className={`badge ${isSelected ? 'badge-blue' : 'badge-outline'}`}
+                        style={{ cursor: 'pointer', padding: '0.4rem 0.8rem', fontSize: '0.8rem', userSelect: 'none' }}
+                      >
+                        {cat.name}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
 
               <div className="form-group">

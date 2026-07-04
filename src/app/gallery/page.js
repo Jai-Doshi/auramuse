@@ -20,7 +20,7 @@ export default function GalleryPage() {
   const [selectedImage, setSelectedImage] = useState(null);
   const [copied, setCopied] = useState(false);
   const [editImageModal, setEditImageModal] = useState(false);
-  const [editImage, setEditImage] = useState({ id: '', prompt: '', categoryId: '', actressIds: [], preview: '' });
+  const [editImage, setEditImage] = useState({ id: '', prompt: '', categoryIds: [], actressIds: [], preview: '' });
   const [submitting, setSubmitting] = useState(false);
 
   // Toast & Custom Confirm Modal States
@@ -93,7 +93,7 @@ export default function GalleryPage() {
     setEditImage({
       id: img.id,
       prompt: img.prompt,
-      categoryId: img.category_id || '',
+      categoryIds: img.categories?.map(c => c.id) || [],
       actressIds: img.actresses?.map(a => a.id) || [],
       preview: img.url
     });
@@ -113,7 +113,7 @@ export default function GalleryPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt: editImage.prompt,
-          category_id: editImage.categoryId,
+          category_ids: editImage.categoryIds,
           actress_ids: editImage.actressIds
         })
       });
@@ -163,7 +163,7 @@ export default function GalleryPage() {
     const matchesSearch = img.prompt.toLowerCase().includes(searchQuery.toLowerCase());
 
     // 2. Category Filter
-    const matchesCategory = selectedCategory === '' || img.category_id === selectedCategory;
+    const matchesCategory = selectedCategory === '' || img.categories?.some(c => c.id === selectedCategory);
 
     // 3. Actress Filter (Checks many-to-many list)
     const matchesActress = selectedActress === '' || img.actresses?.some(a => a.id === selectedActress);
@@ -317,11 +317,11 @@ export default function GalleryPage() {
                           <span>{actress.name}</span>
                         </div>
                       ))}
-                      {selectedImage.category && (
-                        <span className="badge badge-blue">
-                          {selectedImage.category.name}
+                      {selectedImage.categories && selectedImage.categories.map(cat => (
+                        <span key={cat.id} className="badge badge-blue" style={{ marginRight: '0.25rem' }}>
+                          {cat.name}
                         </span>
-                      )}
+                      ))}
                     </div>
 
                     {/* Details section */}
@@ -354,17 +354,17 @@ export default function GalleryPage() {
                       <Heart size={18} fill={selectedImage.favorite ? 'white' : 'none'} />
                       {selectedImage.favorite ? 'Favorited' : 'Add to Favorites'}
                     </button>
-                    
+
                     <div style={{ display: 'flex', gap: '0.75rem', width: '100%' }}>
-                      <button 
-                        className="btn btn-secondary" 
+                      <button
+                        className="btn btn-secondary"
                         style={{ flex: 1 }}
                         onClick={() => handleOpenEditModal(selectedImage)}
                       >
                         Edit Details
                       </button>
-                      <button 
-                        className="btn btn-outline" 
+                      <button
+                        className="btn btn-outline"
                         style={{ flex: 1, borderColor: '#ef4444', color: '#ef4444' }}
                         onClick={() => handleDeleteImage(selectedImage.id)}
                       >
@@ -399,28 +399,40 @@ export default function GalleryPage() {
 
               <div className="form-group">
                 <label>Prompt Parameters</label>
-                <textarea 
-                  className="form-textarea" 
-                  placeholder="Masterpiece, photorealistic..." 
+                <textarea
+                  className="form-textarea"
+                  placeholder="Masterpiece, photorealistic..."
                   style={{ minHeight: '100px' }}
-                  value={editImage.prompt} 
+                  value={editImage.prompt}
                   onChange={(e) => setEditImage(prev => ({ ...prev, prompt: e.target.value }))}
-                  required 
+                  required
                 />
               </div>
 
               <div className="form-group">
-                <label>Category</label>
-                <select 
-                  className="form-select" 
-                  value={editImage.categoryId} 
-                  onChange={(e) => setEditImage(prev => ({ ...prev, categoryId: e.target.value }))}
-                >
-                  <option value="">Uncategorized</option>
-                  {categories.map(cat => (
-                    <option key={cat.id} value={cat.id}>{cat.name}</option>
-                  ))}
-                </select>
+                <label>Categories (Select Multiple)</label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-glass)', padding: '0.6rem', borderRadius: '10px' }}>
+                  {categories.map(cat => {
+                    const isSelected = editImage.categoryIds.includes(cat.id);
+                    return (
+                      <div
+                        key={cat.id}
+                        onClick={() => {
+                          setEditImage(prev => {
+                            const ids = prev.categoryIds.includes(cat.id)
+                              ? prev.categoryIds.filter(id => id !== cat.id)
+                              : [...prev.categoryIds, cat.id];
+                            return { ...prev, categoryIds: ids };
+                          });
+                        }}
+                        className={`badge ${isSelected ? 'badge-blue' : 'badge-outline'}`}
+                        style={{ cursor: 'pointer', padding: '0.4rem 0.8rem', fontSize: '0.8rem', userSelect: 'none' }}
+                      >
+                        {cat.name}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
 
               <div className="form-group">
@@ -429,8 +441,8 @@ export default function GalleryPage() {
                   {actresses.map(actress => {
                     const isSelected = editImage.actressIds.includes(actress.id);
                     return (
-                      <div 
-                        key={actress.id} 
+                      <div
+                        key={actress.id}
                         className={`actress-select-card ${isSelected ? 'selected' : ''}`}
                         onClick={() => {
                           if (isSelected) {
@@ -446,10 +458,10 @@ export default function GalleryPage() {
                           }
                         }}
                       >
-                        <img 
-                          src={actress.profile_picture || '/logo.svg'} 
-                          alt={actress.name} 
-                          className="actress-select-avatar" 
+                        <img
+                          src={actress.profile_picture || '/logo.svg'}
+                          alt={actress.name}
+                          className="actress-select-avatar"
                         />
                         <span style={{ fontSize: '0.85rem', fontWeight: '500' }}>{actress.name}</span>
                       </div>
@@ -474,9 +486,9 @@ export default function GalleryPage() {
           <div className="modal-container" style={{ maxWidth: '400px' }}>
             <div className="modal-header">
               <span className="modal-title">{confirmModal.title}</span>
-              <button 
-                type="button" 
-                className="modal-close-btn" 
+              <button
+                type="button"
+                className="modal-close-btn"
                 onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
               >
                 <X size={20} />
@@ -488,16 +500,16 @@ export default function GalleryPage() {
               </p>
             </div>
             <div className="modal-footer" style={{ gap: '0.75rem' }}>
-              <button 
-                type="button" 
-                className="btn btn-secondary" 
+              <button
+                type="button"
+                className="btn btn-secondary"
                 onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
               >
                 Cancel
               </button>
-              <button 
-                type="button" 
-                className="btn btn-primary" 
+              <button
+                type="button"
+                className="btn btn-primary"
                 style={{ backgroundColor: '#ef4444', borderColor: '#ef4444' }}
                 onClick={() => {
                   confirmModal.onConfirm();

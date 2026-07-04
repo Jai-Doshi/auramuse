@@ -73,13 +73,13 @@ export default function Navbar() {
             </Link>
           );
         })}
-        <Link
+        {/* <Link
           href="/story-mode"
           className={`mobile-nav-link ${pathname === '/story-mode' ? 'active' : ''}`}
         >
           <BookOpen size={20} />
           <span className="mobile-nav-text">Stories</span>
-        </Link>
+        </Link> */}
       </nav>
     </>
   );
