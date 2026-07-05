@@ -965,9 +965,9 @@ export default function HomePage() {
           <div className="modal-container" style={{ maxWidth: '400px' }}>
             <div className="modal-header">
               <span className="modal-title">{confirmModal.title}</span>
-              <button 
-                type="button" 
-                className="modal-close-btn" 
+              <button
+                type="button"
+                className="modal-close-btn"
                 onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
               >
                 <X size={20} />
@@ -979,16 +979,16 @@ export default function HomePage() {
               </p>
             </div>
             <div className="modal-footer" style={{ gap: '0.75rem' }}>
-              <button 
-                type="button" 
-                className="btn btn-secondary" 
+              <button
+                type="button"
+                className="btn btn-secondary"
                 onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
               >
                 Cancel
               </button>
-              <button 
-                type="button" 
-                className="btn btn-primary" 
+              <button
+                type="button"
+                className="btn btn-primary"
                 style={{ backgroundColor: '#ef4444', borderColor: '#ef4444' }}
                 onClick={() => {
                   confirmModal.onConfirm();
@@ -1016,7 +1016,7 @@ export default function HomePage() {
               <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
                 Select the graphics that you want to feature in this actress lore. (Filtered by the selected actresses).
               </p>
-              
+
               <div className="story-image-selector-grid">
                 {images
                   .filter(img => img.actresses?.some(a => newStory.selectedActresses.includes(a.id)))

@@ -866,7 +866,7 @@ export default function StoryModePage() {
               <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
                 Select the graphics that you want to feature in this actress lore. (Filtered by the selected actresses).
               </p>
-              
+
               <div className="story-image-selector-grid">
                 {images
                   .filter(img => img.actresses?.some(a => editStory.selectedActresses.includes(a.id)))
