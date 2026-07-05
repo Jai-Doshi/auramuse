@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Heart, Copy, Check, X, ExternalLink, Sparkles, SlidersHorizontal, ChevronLeft, ChevronRight, LayoutGrid, Image as ImageIcon } from 'lucide-react';
 import Link from 'next/link';
+import ActressMultiSelect from '@/components/ActressMultiSelect';
+import CategoryMultiSelect from '@/components/CategoryMultiSelect';
 
 export default function GalleryPage() {
   const [images, setImages] = useState([]);
@@ -461,63 +463,22 @@ export default function GalleryPage() {
 
               <div className="form-group">
                 <label>Categories (Select Multiple)</label>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-glass)', padding: '0.6rem', borderRadius: '10px' }}>
-                  {categories.map(cat => {
-                    const isSelected = editImage.categoryIds.includes(cat.id);
-                    return (
-                      <div
-                        key={cat.id}
-                        onClick={() => {
-                          setEditImage(prev => {
-                            const ids = prev.categoryIds.includes(cat.id)
-                              ? prev.categoryIds.filter(id => id !== cat.id)
-                              : [...prev.categoryIds, cat.id];
-                            return { ...prev, categoryIds: ids };
-                          });
-                        }}
-                        className={`badge ${isSelected ? 'badge-blue' : 'badge-outline'}`}
-                        style={{ cursor: 'pointer', padding: '0.4rem 0.8rem', fontSize: '0.8rem', userSelect: 'none' }}
-                      >
-                        {cat.name}
-                      </div>
-                    );
-                  })}
-                </div>
+                <CategoryMultiSelect
+                  categories={categories}
+                  selectedIds={editImage.categoryIds}
+                  onChange={(ids) => setEditImage(prev => ({ ...prev, categoryIds: ids }))}
+                  placeholder="Select Categories"
+                />
               </div>
 
               <div className="form-group">
                 <label>Featured Actresses</label>
-                <div className="actress-select-grid">
-                  {actresses.map(actress => {
-                    const isSelected = editImage.actressIds.includes(actress.id);
-                    return (
-                      <div
-                        key={actress.id}
-                        className={`actress-select-card ${isSelected ? 'selected' : ''}`}
-                        onClick={() => {
-                          if (isSelected) {
-                            setEditImage(prev => ({
-                              ...prev,
-                              actressIds: prev.actressIds.filter(aid => aid !== actress.id)
-                            }));
-                          } else {
-                            setEditImage(prev => ({
-                              ...prev,
-                              actressIds: [...prev.actressIds, actress.id]
-                            }));
-                          }
-                        }}
-                      >
-                        <img
-                          src={actress.profile_picture || '/logo.svg'}
-                          alt={actress.name}
-                          className="actress-select-avatar"
-                        />
-                        <span style={{ fontSize: '0.85rem', fontWeight: '500' }}>{actress.name}</span>
-                      </div>
-                    );
-                  })}
-                </div>
+                <ActressMultiSelect
+                  actresses={actresses}
+                  selectedIds={editImage.actressIds}
+                  onChange={(ids) => setEditImage(prev => ({ ...prev, actressIds: ids }))}
+                  placeholder="Select Featured Actresses"
+                />
               </div>
             </div>
             <div className="modal-footer">

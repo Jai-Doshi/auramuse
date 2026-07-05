@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { BookOpen, Sparkles, User, ImageIcon, Check, X, ChevronLeft, ChevronRight, Edit2, Trash2, Plus, UploadCloud } from 'lucide-react';
 import Link from 'next/link';
+import ActressMultiSelect from '@/components/ActressMultiSelect';
 
 export default function StoryModePage() {
   const [stories, setStories] = useState([]);
@@ -12,6 +13,7 @@ export default function StoryModePage() {
   const [selectedStory, setSelectedStory] = useState(null);
   const [activePage, setActivePage] = useState(0);
   const [slideshowMode, setSlideshowMode] = useState(false);
+  const [imageSelectorModalOpen, setImageSelectorModalOpen] = useState(false);
 
   // Edit Story Modal States
   const [editStoryModal, setEditStoryModal] = useState(false);
@@ -780,74 +782,62 @@ export default function StoryModePage() {
                 </div>
               </div>
 
-              {/* Actresses Selection with Profile Pictures */}
+              {/* Actresses Selection with Dropdown */}
               <div className="form-group">
                 <label>Featured AI Actresses (Multi-Select)</label>
-                <div className="actress-select-grid">
-                  {actresses.map(act => {
-                    const isSelected = editStory.selectedActresses.includes(act.id);
-                    return (
-                      <div
-                        key={act.id}
-                        className={`actress-select-card ${isSelected ? 'selected' : ''}`}
-                        onClick={() => toggleStoryActress(act.id)}
-                      >
-                        <img
-                          src={act.profile_picture || '/logo.svg'}
-                          alt={act.name}
-                          className="actress-select-avatar"
-                        />
-                        <span style={{ fontSize: '0.85rem', fontWeight: '500' }}>{act.name}</span>
-                      </div>
-                    );
-                  })}
-                </div>
+                <ActressMultiSelect
+                  actresses={actresses}
+                  selectedIds={editStory.selectedActresses}
+                  onChange={(ids) => setEditStory(prev => ({ ...prev, selectedActresses: ids }))}
+                  placeholder="Select Featured Actresses"
+                />
               </div>
 
-              {/* Associated Images Selection */}
+              {/* Associated Images Selection via Modal Gallery */}
               <div className="form-group">
-                <label>Select Graphics Used in this Story</label>
+                <label>Story Graphics / Illustrations</label>
                 {editStory.selectedActresses.length === 0 ? (
                   <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                    *Select at least one actress to filter her images
+                    *Select at least one actress first to select her images
                   </p>
                 ) : (
                   <>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.5rem', maxHeight: '120px', overflowY: 'auto', background: 'var(--input-bg)', border: '1px solid var(--input-border)', padding: '0.5rem', borderRadius: '10px', marginBottom: '1rem' }}>
-                      {images
-                        .filter(img => img.actresses?.some(a => editStory.selectedActresses.includes(a.id)))
-                        .map(img => {
-                          const isSelected = editStory.selectedImages.some(i => i.id === img.id);
-                          return (
-                            <div
-                              key={img.id}
-                              className={`social-feed-item ${isSelected ? 'selected-border' : ''}`}
-                              onClick={() => toggleStoryImage(img)}
-                              style={{ border: isSelected ? '2px solid var(--accent-purple)' : '1px solid var(--border-glass)', position: 'relative', cursor: 'pointer', borderRadius: '6px', overflow: 'hidden', aspectRatio: '1/1' }}
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => setImageSelectorModalOpen(true)}
+                      style={{ width: '100%', marginBottom: '1rem', display: 'flex', gap: '0.5rem', justifyContent: 'center' }}
+                    >
+                      <ImageIcon size={16} />
+                      <span>Select Graphics from Gallery ({editStory.selectedImages.length} selected)</span>
+                    </button>
+
+                    {editStory.selectedImages.length > 0 && (
+                      <div className="selected-graphics-list" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        {editStory.selectedImages.map(selImg => (
+                          <div key={selImg.id} className="selected-graphic-caption-row" style={{ display: 'flex', gap: '1rem', alignItems: 'center', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-glass)', padding: '0.6rem', borderRadius: '12px' }}>
+                            <img src={selImg.url} style={{ width: '50px', height: '50px', borderRadius: '8px', objectFit: 'cover', border: '1px solid var(--border-glass)' }} alt="Mini thumbnail" />
+                            <input
+                              type="text"
+                              className="form-input"
+                              style={{ flex: 1, padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
+                              placeholder="Image caption/description for the story (optional)"
+                              value={selImg.description || ''}
+                              onChange={(e) => updateStoryImageDescription(selImg.id, e.target.value)}
+                            />
+                            <button
+                              type="button"
+                              className="btn-sm-icon btn-danger"
+                              onClick={() => toggleStoryImage(selImg)}
+                              title="Deselect image"
+                              style={{ padding: '0.5rem' }}
                             >
-                              <img src={img.url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Choice" />
-                              {isSelected && (
-                                <div style={{ position: 'absolute', top: '2px', right: '2px', background: 'var(--accent-purple)', color: 'white', borderRadius: '50%', width: '16px', height: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                  <Check size={10} />
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                    </div>
-                    {editStory.selectedImages.map(selImg => (
-                      <div key={selImg.id} style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '0.75rem', background: 'rgba(0,0,0,0.1)', padding: '0.5rem', borderRadius: '8px' }}>
-                        <img src={selImg.url} style={{ width: '40px', height: '40px', borderRadius: '4px', objectFit: 'cover' }} alt="Mini thumbnail" />
-                        <input
-                          type="text"
-                          className="form-input"
-                          style={{ flex: 1, padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
-                          placeholder="Image caption/description for the story (optional)"
-                          value={selImg.description || ''}
-                          onChange={(e) => updateStoryImageDescription(selImg.id, e.target.value)}
-                        />
+                              <X size={14} />
+                            </button>
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    )}
                   </>
                 )}
               </div>
@@ -859,6 +849,68 @@ export default function StoryModePage() {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* --- STORY IMAGE GALLERY SELECTOR SUB-MODAL --- */}
+      {imageSelectorModalOpen && (
+        <div className="modal-overlay" style={{ zIndex: 1100 }}>
+          <div className="modal-container" style={{ maxWidth: '750px', maxHeight: '80vh' }}>
+            <div className="modal-header">
+              <span className="modal-title">Select Story Graphics</span>
+              <button type="button" className="modal-close-btn" onClick={() => setImageSelectorModalOpen(false)}>
+                <X size={20} />
+              </button>
+            </div>
+            <div className="modal-body" style={{ overflowY: 'auto' }}>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+                Select the graphics that you want to feature in this actress lore. (Filtered by the selected actresses).
+              </p>
+              
+              <div className="story-image-selector-grid">
+                {images
+                  .filter(img => img.actresses?.some(a => editStory.selectedActresses.includes(a.id)))
+                  .map(img => {
+                    const isSelected = editStory.selectedImages.some(i => i.id === img.id);
+                    return (
+                      <div
+                        key={img.id}
+                        className={`story-image-selector-card ${isSelected ? 'selected' : ''}`}
+                        onClick={() => toggleStoryImage(img)}
+                      >
+                        <img src={img.url} alt="Gallery graphic" className="selector-card-img" />
+                        {isSelected && (
+                          <div className="selector-checked-badge">
+                            <Check size={12} />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+            <div className="modal-footer" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+              <button
+                type="button"
+                className="btn btn-outline"
+                onClick={() => setEditStory(prev => ({ ...prev, selectedImages: [] }))}
+              >
+                Clear Selection
+              </button>
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', alignSelf: 'center' }}>
+                  {editStory.selectedImages.length} Selected
+                </span>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => setImageSelectorModalOpen(false)}
+                >
+                  Confirm Selection
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

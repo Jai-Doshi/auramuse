@@ -14,6 +14,8 @@ import {
   Check,
   Copy
 } from 'lucide-react';
+import ActressMultiSelect from '@/components/ActressMultiSelect';
+import CategoryMultiSelect from '@/components/CategoryMultiSelect';
 
 export default function HomePage() {
   // Database States
@@ -28,6 +30,7 @@ export default function HomePage() {
   const [actressModal, setActressModal] = useState(false);
   const [imageModal, setImageModal] = useState(false);
   const [storyModal, setStoryModal] = useState(false);
+  const [imageSelectorModalOpen, setImageSelectorModalOpen] = useState(false);
   const [categoryModal, setCategoryModal] = useState(false);
 
   // Form Fields
@@ -729,61 +732,25 @@ export default function HomePage() {
                 </label>
               </div>
 
-              {/* Multi-Actress Selection with Profile Pictures */}
+              {/* Multi-Actress Selection with Dropdown */}
               <div className="form-group">
                 <label>Featured AI Actresses (Select all featured)</label>
-                <div className="actress-select-grid">
-                  {actresses.map(act => {
-                    const isSelected = newImage.actressIds.includes(act.id);
-                    return (
-                      <div
-                        key={act.id}
-                        className={`actress-select-card ${isSelected ? 'selected' : ''}`}
-                        onClick={() => {
-                          setNewImage(prev => {
-                            const ids = prev.actressIds.includes(act.id)
-                              ? prev.actressIds.filter(id => id !== act.id)
-                              : [...prev.actressIds, act.id];
-                            return { ...prev, actressIds: ids };
-                          });
-                        }}
-                      >
-                        <img
-                          src={act.profile_picture || '/logo.png'}
-                          alt={act.name}
-                          className="actress-select-avatar"
-                        />
-                        <span className="actress-select-name">{act.name}</span>
-                      </div>
-                    );
-                  })}
-                </div>
+                <ActressMultiSelect
+                  actresses={actresses}
+                  selectedIds={newImage.actressIds}
+                  onChange={(ids) => setNewImage(prev => ({ ...prev, actressIds: ids }))}
+                  placeholder="Select Featured Actresses"
+                />
               </div>
 
               <div className="form-group">
                 <label>Categories (Select Multiple)</label>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-glass)', padding: '0.6rem', borderRadius: '10px' }}>
-                  {categories.map(cat => {
-                    const isSelected = newImage.categoryIds.includes(cat.id);
-                    return (
-                      <div
-                        key={cat.id}
-                        onClick={() => {
-                          setNewImage(prev => {
-                            const ids = prev.categoryIds.includes(cat.id)
-                              ? prev.categoryIds.filter(id => id !== cat.id)
-                              : [...prev.categoryIds, cat.id];
-                            return { ...prev, categoryIds: ids };
-                          });
-                        }}
-                        className={`badge ${isSelected ? 'badge-blue' : 'badge-outline'}`}
-                        style={{ cursor: 'pointer', padding: '0.4rem 0.8rem', fontSize: '0.8rem', userSelect: 'none' }}
-                      >
-                        {cat.name}
-                      </div>
-                    );
-                  })}
-                </div>
+                <CategoryMultiSelect
+                  categories={categories}
+                  selectedIds={newImage.categoryIds}
+                  onChange={(ids) => setNewImage(prev => ({ ...prev, categoryIds: ids }))}
+                  placeholder="Select Categories"
+                />
               </div>
 
               <div className="form-group">
@@ -922,74 +889,62 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* Actresses Selection with Profile Pictures */}
+              {/* Actresses Selection with Dropdown */}
               <div className="form-group">
                 <label>Featured AI Actresses (Multi-Select)</label>
-                <div className="actress-select-grid">
-                  {actresses.map(act => {
-                    const isSelected = newStory.selectedActresses.includes(act.id);
-                    return (
-                      <div
-                        key={act.id}
-                        className={`actress-select-card ${isSelected ? 'selected' : ''}`}
-                        onClick={() => toggleStoryActress(act.id)}
-                      >
-                        <img
-                          src={act.profile_picture || '/logo.png'}
-                          alt={act.name}
-                          className="actress-select-avatar"
-                        />
-                        <span className="actress-select-name">{act.name}</span>
-                      </div>
-                    );
-                  })}
-                </div>
+                <ActressMultiSelect
+                  actresses={actresses}
+                  selectedIds={newStory.selectedActresses}
+                  onChange={(ids) => setNewStory(prev => ({ ...prev, selectedActresses: ids }))}
+                  placeholder="Select Featured Actresses"
+                />
               </div>
 
-              {/* Associated Images Selection (Checks for image-actress intersections) */}
+              {/* Associated Images Selection via Modal Gallery */}
               <div className="form-group">
-                <label>Select Graphics Used in this Story</label>
+                <label>Story Graphics / Illustrations</label>
                 {newStory.selectedActresses.length === 0 ? (
                   <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                    *Select at least one actress to filter her images
+                    *Select at least one actress first to select her images
                   </p>
                 ) : (
                   <>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.5rem', maxHeight: '120px', overflowY: 'auto', background: 'var(--input-bg)', border: '1px solid var(--input-border)', padding: '0.5rem', borderRadius: '10px', marginBottom: '1rem' }}>
-                      {images
-                        .filter(img => img.actresses?.some(a => newStory.selectedActresses.includes(a.id)))
-                        .map(img => {
-                          const isSelected = newStory.selectedImages.some(i => i.id === img.id);
-                          return (
-                            <div
-                              key={img.id}
-                              className={`social-feed-item ${isSelected ? 'selected-border' : ''}`}
-                              onClick={() => toggleStoryImage(img)}
-                              style={{ border: isSelected ? '2px solid var(--accent-purple)' : '1px solid var(--border-glass)' }}
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => setImageSelectorModalOpen(true)}
+                      style={{ width: '100%', marginBottom: '1rem', display: 'flex', gap: '0.5rem', justifyContent: 'center' }}
+                    >
+                      <ImageIcon size={16} />
+                      <span>Select Graphics from Gallery ({newStory.selectedImages.length} selected)</span>
+                    </button>
+
+                    {newStory.selectedImages.length > 0 && (
+                      <div className="selected-graphics-list" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        {newStory.selectedImages.map(selImg => (
+                          <div key={selImg.id} className="selected-graphic-caption-row" style={{ display: 'flex', gap: '1rem', alignItems: 'center', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-glass)', padding: '0.6rem', borderRadius: '12px' }}>
+                            <img src={selImg.url} style={{ width: '50px', height: '50px', borderRadius: '8px', objectFit: 'cover', border: '1px solid var(--border-glass)' }} alt="Mini thumbnail" />
+                            <input
+                              type="text"
+                              className="form-input"
+                              style={{ flex: 1, padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
+                              placeholder="Image caption/description for the story (optional)"
+                              value={selImg.description || ''}
+                              onChange={(e) => updateStoryImageDescription(selImg.id, e.target.value)}
+                            />
+                            <button
+                              type="button"
+                              className="btn-sm-icon btn-danger"
+                              onClick={() => toggleStoryImage(selImg)}
+                              title="Deselect image"
+                              style={{ padding: '0.5rem' }}
                             >
-                              <img src={img.url} className="social-feed-img" alt="Choice" />
-                              {isSelected && (
-                                <div style={{ position: 'absolute', top: '2px', right: '2px', background: 'var(--accent-purple)', color: 'white', borderRadius: '50%', width: '16px', height: '16px', display: 'flex', alignItems: 'center', justifyItems: 'center', justifyContent: 'center' }}>
-                                  <Check size={10} />
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                    </div>
-                    {newStory.selectedImages.map(selImg => (
-                      <div key={selImg.id} style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '0.75rem', background: 'rgba(0,0,0,0.1)', padding: '0.5rem', borderRadius: '8px' }}>
-                        <img src={selImg.url} style={{ width: '40px', height: '40px', borderRadius: '4px', objectFit: 'cover' }} alt="Mini thumbnail" />
-                        <input
-                          type="text"
-                          className="form-input"
-                          style={{ flex: 1, padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
-                          placeholder="Image caption/description for the story (optional)"
-                          value={selImg.description || ''}
-                          onChange={(e) => updateStoryImageDescription(selImg.id, e.target.value)}
-                        />
+                              <X size={14} />
+                            </button>
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    )}
                   </>
                 )}
               </div>
@@ -1042,6 +997,68 @@ export default function HomePage() {
               >
                 Confirm Delete
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- STORY IMAGE GALLERY SELECTOR SUB-MODAL --- */}
+      {imageSelectorModalOpen && (
+        <div className="modal-overlay" style={{ zIndex: 1100 }}>
+          <div className="modal-container" style={{ maxWidth: '750px', maxHeight: '80vh' }}>
+            <div className="modal-header">
+              <span className="modal-title">Select Story Graphics</span>
+              <button type="button" className="modal-close-btn" onClick={() => setImageSelectorModalOpen(false)}>
+                <X size={20} />
+              </button>
+            </div>
+            <div className="modal-body" style={{ overflowY: 'auto' }}>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+                Select the graphics that you want to feature in this actress lore. (Filtered by the selected actresses).
+              </p>
+              
+              <div className="story-image-selector-grid">
+                {images
+                  .filter(img => img.actresses?.some(a => newStory.selectedActresses.includes(a.id)))
+                  .map(img => {
+                    const isSelected = newStory.selectedImages.some(i => i.id === img.id);
+                    return (
+                      <div
+                        key={img.id}
+                        className={`story-image-selector-card ${isSelected ? 'selected' : ''}`}
+                        onClick={() => toggleStoryImage(img)}
+                      >
+                        <img src={img.url} alt="Gallery graphic" className="selector-card-img" />
+                        {isSelected && (
+                          <div className="selector-checked-badge">
+                            <Check size={12} />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+            <div className="modal-footer" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+              <button
+                type="button"
+                className="btn btn-outline"
+                onClick={() => setNewStory(prev => ({ ...prev, selectedImages: [], coverPosterUrl: '' }))}
+              >
+                Clear Selection
+              </button>
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', alignSelf: 'center' }}>
+                  {newStory.selectedImages.length} Selected
+                </span>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => setImageSelectorModalOpen(false)}
+                >
+                  Confirm Selection
+                </button>
+              </div>
             </div>
           </div>
         </div>
