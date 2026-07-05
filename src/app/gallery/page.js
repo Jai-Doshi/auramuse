@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Search, Heart, Copy, Check, X, ExternalLink, Sparkles } from 'lucide-react';
+import { Search, Heart, Copy, Check, X, ExternalLink, Sparkles, SlidersHorizontal, ChevronLeft, ChevronRight, LayoutGrid, Image as ImageIcon } from 'lucide-react';
 import Link from 'next/link';
 
 export default function GalleryPage() {
@@ -26,6 +26,11 @@ export default function GalleryPage() {
   // Toast & Custom Confirm Modal States
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
+
+  // View & Lightbox & Mobile Filter States
+  const [viewMode, setViewMode] = useState('prompt'); // 'prompt' or 'gallery'
+  const [lightboxIndex, setLightboxIndex] = useState(null);
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
 
   const showToast = (message, type = 'success') => {
     setToast({ show: true, message, type });
@@ -194,60 +199,93 @@ export default function GalleryPage() {
     <div className="fade-in">
       <div className="section-header">
         <h1 className="section-title">AI Graphics Gallery</h1>
+        <div className="view-toggle-container">
+          <button
+            className={`view-toggle-btn ${viewMode === 'prompt' ? 'active' : ''}`}
+            onClick={() => setViewMode('prompt')}
+            aria-label="Switch to Prompt View"
+          >
+            <LayoutGrid size={16} />
+            <span className="toggle-text-label">Prompt View</span>
+          </button>
+          <button
+            className={`view-toggle-btn ${viewMode === 'gallery' ? 'active' : ''}`}
+            onClick={() => setViewMode('gallery')}
+            aria-label="Switch to Gallery View"
+          >
+            <ImageIcon size={16} />
+            <span className="toggle-text-label">Gallery View</span>
+          </button>
+        </div>
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="glass-card filter-bar">
-        {/* Search */}
-        <div className="search-box">
-          <Search size={18} className="search-icon" />
-          <input
-            type="text"
-            className="form-input search-input"
-            placeholder="Search prompt keywords..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+      <div className="glass-card filter-bar-wrapper">
+        <div className="filter-search-row">
+          {/* Search */}
+          <div className="search-box">
+            <Search size={18} className="search-icon" />
+            <input
+              type="text"
+              className="form-input search-input"
+              placeholder="Search prompt keywords..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+
+          {/* Mobile Filter Toggle Button */}
+          <button
+            type="button"
+            className={`mobile-filter-toggle ${showMobileFilters ? 'active' : ''}`}
+            onClick={() => setShowMobileFilters(!showMobileFilters)}
+            aria-label="Toggle Filters"
+          >
+            <SlidersHorizontal size={18} />
+          </button>
         </div>
 
-        {/* Actress Filter */}
-        <select
-          className="form-select filter-select"
-          value={selectedActress}
-          onChange={(e) => setSelectedActress(e.target.value)}
-        >
-          <option value="">All Actresses</option>
-          {actresses.map(act => (
-            <option key={act.id} value={act.id}>{act.name}</option>
-          ))}
-        </select>
-
-        {/* Category Filter */}
-        <select
-          className="form-select filter-select"
-          value={selectedCategory}
-          onChange={(e) => setSelectedCategory(e.target.value)}
-        >
-          <option value="">All Categories</option>
-          {categories.map(cat => (
-            <option key={cat.id} value={cat.id}>{cat.name}</option>
-          ))}
-        </select>
-
-        {/* Tabs: All vs Favorites */}
-        <div className="gallery-tabs">
-          <button
-            className={`tab-btn ${activeTab === 'all' ? 'active' : ''}`}
-            onClick={() => setActiveTab('all')}
+        {/* Filters Selects and Tabs */}
+        <div className={`filter-options-panel ${showMobileFilters ? 'show-mobile' : ''}`}>
+          {/* Actress Filter */}
+          <select
+            className="form-select filter-select"
+            value={selectedActress}
+            onChange={(e) => setSelectedActress(e.target.value)}
           >
-            All
-          </button>
-          <button
-            className={`tab-btn ${activeTab === 'favorites' ? 'active' : ''}`}
-            onClick={() => setActiveTab('favorites')}
+            <option value="">All Actresses</option>
+            {actresses.map(act => (
+              <option key={act.id} value={act.id}>{act.name}</option>
+            ))}
+          </select>
+
+          {/* Category Filter */}
+          <select
+            className="form-select filter-select"
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
           >
-            Favorites
-          </button>
+            <option value="">All Categories</option>
+            {categories.map(cat => (
+              <option key={cat.id} value={cat.id}>{cat.name}</option>
+            ))}
+          </select>
+
+          {/* Tabs: All vs Favorites */}
+          <div className="gallery-tabs">
+            <button
+              className={`tab-btn ${activeTab === 'all' ? 'active' : ''}`}
+              onClick={() => setActiveTab('all')}
+            >
+              All
+            </button>
+            <button
+              className={`tab-btn ${activeTab === 'favorites' ? 'active' : ''}`}
+              onClick={() => setActiveTab('favorites')}
+            >
+              Favorites
+            </button>
+          </div>
         </div>
       </div>
 
@@ -257,6 +295,18 @@ export default function GalleryPage() {
           <Sparkles size={48} className="text-muted" />
           <h3>No matching graphics found</h3>
           <p>Try modifying your filters or search keywords.</p>
+        </div>
+      ) : viewMode === 'gallery' ? (
+        <div className="gallery-masonry">
+          {filteredImages.map((img, idx) => (
+            <div
+              key={img.id}
+              className="gallery-masonry-item"
+              onClick={() => setLightboxIndex(idx)}
+            >
+              <img src={img.url} alt={img.prompt || "AI Graphic"} loading="lazy" />
+            </div>
+          ))}
         </div>
       ) : (
         <div className="gallery-grid">
@@ -523,6 +573,16 @@ export default function GalleryPage() {
         </div>
       )}
 
+      {/* GALLERY LIGHTBOX OVERLAY */}
+      {lightboxIndex !== null && (
+        <LightboxModal
+          images={filteredImages}
+          currentIndex={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+          onNavigate={(newIndex) => setLightboxIndex(newIndex)}
+        />
+      )}
+
       {/* Toast Notification */}
       <div className="toast-container">
         <div className={`toast toast-${toast.type} ${toast.show ? 'show' : ''}`}>
@@ -532,6 +592,103 @@ export default function GalleryPage() {
             {toast.type === 'info' && <Sparkles size={18} style={{ color: '#3b82f6' }} />}
           </div>
           <div className="toast-message">{toast.message}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Highly polished, details-free, scrolling Lightbox Modal for Gallery View
+function LightboxModal({ images, currentIndex, onClose, onNavigate }) {
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'ArrowLeft') {
+        if (currentIndex > 0) {
+          onNavigate(currentIndex - 1);
+        }
+      } else if (e.key === 'ArrowRight') {
+        if (currentIndex < images.length - 1) {
+          onNavigate(currentIndex + 1);
+        }
+      } else if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentIndex, images.length, onNavigate, onClose]);
+
+  useEffect(() => {
+    const activeThumb = document.getElementById(`lightbox-thumb-${currentIndex}`);
+    if (activeThumb) {
+      activeThumb.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+        inline: 'center'
+      });
+    }
+  }, [currentIndex]);
+
+  const currentImg = images[currentIndex];
+  if (!currentImg) return null;
+
+  return (
+    <div className="lightbox-overlay" onClick={onClose}>
+      {/* Close button */}
+      <button className="lightbox-close-btn" onClick={onClose} aria-label="Close Lightbox">
+        <X size={24} />
+      </button>
+
+      {/* Navigation Arrow Left */}
+      {currentIndex > 0 && (
+        <button
+          className="lightbox-nav-btn lightbox-nav-prev"
+          onClick={(e) => {
+            e.stopPropagation();
+            onNavigate(currentIndex - 1);
+          }}
+          aria-label="Previous Image"
+        >
+          <ChevronLeft size={28} />
+        </button>
+      )}
+
+      {/* Main Image Container */}
+      <div className="lightbox-content-container" onClick={(e) => e.stopPropagation()}>
+        <img
+          src={currentImg.url}
+          alt={currentImg.prompt || "Gallery Image"}
+          className="lightbox-main-img"
+        />
+      </div>
+
+      {/* Navigation Arrow Right */}
+      {currentIndex < images.length - 1 && (
+        <button
+          className="lightbox-nav-btn lightbox-nav-next"
+          onClick={(e) => {
+            e.stopPropagation();
+            onNavigate(currentIndex + 1);
+          }}
+          aria-label="Next Image"
+        >
+          <ChevronRight size={28} />
+        </button>
+      )}
+
+      {/* Bottom Thumbnail Strip */}
+      <div className="lightbox-thumbnails-wrapper" onClick={(e) => e.stopPropagation()}>
+        <div className="lightbox-thumbnails-scroll">
+          {images.map((img, idx) => (
+            <div
+              key={img.id}
+              id={`lightbox-thumb-${idx}`}
+              className={`lightbox-thumbnail-item ${idx === currentIndex ? 'active' : ''}`}
+              onClick={() => onNavigate(idx)}
+            >
+              <img src={img.url} alt={`Thumbnail ${idx}`} />
+            </div>
+          ))}
         </div>
       </div>
     </div>

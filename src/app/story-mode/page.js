@@ -11,6 +11,7 @@ export default function StoryModePage() {
   const [loading, setLoading] = useState(true);
   const [selectedStory, setSelectedStory] = useState(null);
   const [activePage, setActivePage] = useState(0);
+  const [slideshowMode, setSlideshowMode] = useState(false);
 
   // Edit Story Modal States
   const [editStoryModal, setEditStoryModal] = useState(false);
@@ -111,24 +112,39 @@ export default function StoryModePage() {
   const handleOpenStory = (story) => {
     setSelectedStory(story);
     setActivePage(0);
+    setSlideshowMode(false);
   };
 
   const handleCloseStory = () => {
     setSelectedStory(null);
     setActivePage(0);
+    setSlideshowMode(false);
   };
 
   const nextPage = () => {
     if (!selectedStory) return;
     const totalSlides = (selectedStory.images?.length || 0) + 1; // cover slide (0) + images
-    if (activePage < totalSlides - 1) {
-      setActivePage(prev => prev + 1);
+    if (slideshowMode) {
+      const totalImages = selectedStory.images?.length || 0;
+      if (activePage < totalImages) {
+        setActivePage(prev => prev + 1);
+      }
+    } else {
+      if (activePage < totalSlides - 1) {
+        setActivePage(prev => prev + 1);
+      }
     }
   };
 
   const prevPage = () => {
-    if (activePage > 0) {
-      setActivePage(prev => prev - 1);
+    if (slideshowMode) {
+      if (activePage > 1) {
+        setActivePage(prev => prev - 1);
+      }
+    } else {
+      if (activePage > 0) {
+        setActivePage(prev => prev - 1);
+      }
     }
   };
 
@@ -378,7 +394,8 @@ export default function StoryModePage() {
                 {/* Top right corner: total page/images counter */}
                 <div className="story-card-page-count">
                   <BookOpen size={12} style={{ color: 'var(--accent-purple)' }} />
-                  <span>{pageCount} page{pageCount !== 1 ? 's' : ''}</span>
+                  <span className="page-count-full">{pageCount} page{pageCount !== 1 ? 's' : ''}</span>
+                  <span className="page-count-mobile">{pageCount}</span>
                 </div>
 
                 {/* Hover overlay showing title, description, and actions */}
@@ -416,159 +433,228 @@ export default function StoryModePage() {
         <div className="book-overlay" style={{ display: 'flex' }}>
           <div className="book-overlay-backdrop" onClick={handleCloseStory}></div>
 
-          <div className="book-viewer-container">
+          <div className={`book-viewer-container ${slideshowMode ? 'slideshow-mode-active' : ''}`}>
             {/* Top Toolbar */}
             <div className="book-viewer-header">
               <div className="book-title-area">
-                <h2>{selectedStory.title}</h2>
+                <h2>
+                  {selectedStory.title}
+                </h2>
               </div>
               <div className="book-actions-area">
-                <button className="btn btn-secondary btn-sm" onClick={() => handleOpenEditModal(selectedStory)}>
-                  Edit Story
-                </button>
-                <button className="btn btn-outline btn-sm btn-danger" onClick={() => handleDeleteStory(selectedStory.id)}>
-                  Delete Story
-                </button>
+                {slideshowMode ? (
+                  <button className="btn btn-secondary btn-sm" onClick={() => setSlideshowMode(false)}>
+                    <BookOpen size={14} />
+                    <span>Book Mode</span>
+                  </button>
+                ) : (
+                  <>
+                    <button className="btn btn-secondary btn-sm" onClick={() => handleOpenEditModal(selectedStory)}>
+                      Edit Story
+                    </button>
+                    <button className="btn btn-outline btn-sm btn-danger" onClick={() => handleDeleteStory(selectedStory.id)}>
+                      Delete Story
+                    </button>
+                  </>
+                )}
                 <button className="book-close-btn" onClick={handleCloseStory}>
                   <X size={26} />
                 </button>
               </div>
             </div>
-
-            {/* Book Spine Frame */}
-            <div
-              className="book-frame"
-              onTouchStart={handleTouchStart}
-              onTouchEnd={handleTouchEnd}
-            >
-              <div className="book-pages-wrapper">
-                {activePage === 0 ? (
-                  /* COVER / INTRO SLIDE */
-                  <div className="book-slide fade-in-slide">
-                    {/* Left Page: Cover Poster image */}
-                    <div className="book-page book-page-left book-page-cover-img">
-                      <img
-                        src={selectedStory.cover_poster || (selectedStory.images?.[0]?.url || '/logo.png')}
-                        alt="Story Cover"
-                        className="book-cover-img"
-                      />
-                    </div>
-
-                    {/* Crease Fold effect */}
-                    <div className="book-crease"></div>
-
-                    {/* Right Page: Book Title & narrative intro */}
-                    <div className="book-page book-page-right">
-                      <div className="book-content-container">
-                        <span className="book-genre-tag">Actress Universe Lore</span>
-                        <h1 className="book-title-display">{selectedStory.title}</h1>
-
-                        <div className="book-featured-actresses">
-                          <span className="book-sub-label">Featured Actresses</span>
-                          <div className="book-actresses-row">
-                            {selectedStory.actresses?.map(act => (
-                              <div key={act.id} className="book-actress-chip">
-                                <img src={act.profile_picture || '/logo.svg'} alt={act.name} className="book-actress-avatar" />
-                                <span>{act.name}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-
-                        <div className="book-narrative-intro">
-                          <p>{selectedStory.content}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  /* STORY IMAGE DETAILS SLIDES */
-                  (() => {
+            {/* Book Spine Frame or Slideshow Viewer */}
+            {slideshowMode ? (
+              /* CLEAN SLIDESHOW VIEW */
+              <div className="story-slideshow-fullscreen">
+                <div className="story-slideshow-content" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+                  {(() => {
                     const imgIdx = activePage - 1;
                     const currentImg = selectedStory.images?.[imgIdx];
-                    if (!currentImg) return null;
+                    if (!currentImg) return <p style={{ color: 'var(--text-muted)' }}>No images available in this story.</p>;
                     return (
-                      <div className="book-slide fade-in-slide" key={currentImg.id}>
-                        {/* Left Page: Image view */}
-                        <div className="book-page book-page-left">
-                          <div className="book-image-container">
-                            <img src={currentImg.url} alt={`Illustration ${activePage}`} className="book-story-img" />
+                      <div className="story-slideshow-image-wrapper">
+                        <img src={currentImg.url} alt="Story Slide" className="story-slideshow-image" />
+                      </div>
+                    );
+                  })()}
+
+                  {/* Navigation Arrows inside slideshow */}
+                  {activePage > 1 && (
+                    <button className="book-nav-btn book-nav-btn-left" onClick={prevPage} title="Previous Image">
+                      <ChevronLeft size={24} />
+                    </button>
+                  )}
+
+                  {activePage < (selectedStory.images?.length || 0) && (
+                    <button className="book-nav-btn book-nav-btn-right" onClick={nextPage} title="Next Image">
+                      <ChevronRight size={24} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              /* Book Spine Frame */
+              <div
+                className="book-frame"
+                onTouchStart={handleTouchStart}
+                onTouchEnd={handleTouchEnd}
+              >
+                <div className="book-pages-wrapper">
+                  {activePage === 0 ? (
+                    /* COVER / INTRO SLIDE */
+                    <div className="book-slide fade-in-slide">
+                      {/* Left Page: Cover Poster image */}
+                      <div className="book-page book-page-left book-page-cover-img">
+                        <img
+                          src={selectedStory.cover_poster || (selectedStory.images?.[0]?.url || '/logo.png')}
+                          alt="Story Cover"
+                          className="book-cover-img"
+                        />
+                      </div>
+
+                      {/* Crease Fold effect */}
+                      <div className="book-crease"></div>
+
+                      {/* Right Page: Book Title & narrative intro */}
+                      <div className="book-page book-page-right">
+                        <div className="book-content-container">
+                          <span className="book-genre-tag">Actress Universe Lore</span>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', width: '100%', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+                            <h1 className="book-title-display" style={{ margin: 0 }}>{selectedStory.title}</h1>
+                            {selectedStory.images && selectedStory.images.length > 0 && (
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-slideshow-toggle"
+                                onClick={() => {
+                                  setSlideshowMode(true);
+                                  setActivePage(1);
+                                }}
+                                title="Play story images as slideshow"
+                              >
+                                <ImageIcon size={16} />
+                                <span className="btn-text-label">Slideshow View</span>
+                              </button>
+                            )}
                           </div>
-                        </div>
 
-                        {/* Crease fold effect */}
-                        <div className="book-crease"></div>
-
-                        {/* Right Page: Image context description */}
-                        <div className="book-page book-page-right">
-                          <div className="book-content-container">
-                            <div className="book-page-number">Illustration {activePage} of {selectedStory.images.length}</div>
-
-                            <div className="book-illustration-caption">
-                              <span className="book-caption-label">Illustration context</span>
-                              <p className="book-caption-text">
-                                {currentImg.description || "No context has been written for this frame yet. Add descriptions in Edit Mode to build out the details of this story scene."}
-                              </p>
-                            </div>
-
-                            {currentImg.prompt && (
-                              <div className="book-illustration-prompt">
-                                <span className="book-prompt-label">AI Generation Prompt</span>
-                                <p className="book-prompt-text">"{currentImg.prompt}"</p>
-                              </div>
-                            )}
-
-                            {currentImg.actresses && currentImg.actresses.length > 0 && (
-                              <div style={{ marginTop: '1.5rem' }}>
-                                <span className="book-prompt-label">Featured in Graphic</span>
-                                <div className="book-actresses-row" style={{ marginTop: '0.4rem' }}>
-                                  {currentImg.actresses.map(act => (
-                                    <div key={act.id} className="book-actress-chip">
-                                      <img src={act.profile_picture || '/logo.svg'} alt={act.name} className="book-actress-avatar" />
-                                      <span style={{ fontSize: '0.75rem' }}>{act.name}</span>
-                                    </div>
-                                  ))}
+                          <div className="book-featured-actresses">
+                            <span className="book-sub-label">Featured Actresses</span>
+                            <div className="book-actresses-row">
+                              {selectedStory.actresses?.map(act => (
+                                <div key={act.id} className="book-actress-chip">
+                                  <img src={act.profile_picture || '/logo.svg'} alt={act.name} className="book-actress-avatar" />
+                                  <span>{act.name}</span>
                                 </div>
-                              </div>
-                            )}
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="book-narrative-intro">
+                            <p>{selectedStory.content}</p>
                           </div>
                         </div>
                       </div>
-                    );
-                  })()
+                    </div>
+                  ) : (
+                    /* STORY IMAGE DETAILS SLIDES */
+                    (() => {
+                      const imgIdx = activePage - 1;
+                      const currentImg = selectedStory.images?.[imgIdx];
+                      if (!currentImg) return null;
+                      return (
+                        <div className="book-slide fade-in-slide" key={currentImg.id}>
+                          {/* Left Page: Image view */}
+                          <div className="book-page book-page-left">
+                            <div className="book-image-container">
+                              <img src={currentImg.url} alt={`Illustration ${activePage}`} className="book-story-img" />
+                            </div>
+                          </div>
+
+                          {/* Crease fold effect */}
+                          <div className="book-crease"></div>
+
+                          {/* Right Page: Image context description */}
+                          <div className="book-page book-page-right">
+                            <div className="book-content-container">
+                              <div className="book-page-number">Illustration {activePage} of {selectedStory.images.length}</div>
+
+                              <div className="book-illustration-caption">
+                                <span className="book-caption-label">Illustration context</span>
+                                <p className="book-caption-text">
+                                  {currentImg.description || "No context has been written for this frame yet. Add descriptions in Edit Mode to build out the details of this story scene."}
+                                </p>
+                              </div>
+
+                              {currentImg.prompt && (
+                                <div className="book-illustration-prompt">
+                                  <span className="book-prompt-label">AI Generation Prompt</span>
+                                  <p className="book-prompt-text">"{currentImg.prompt}"</p>
+                                </div>
+                              )}
+
+                              {currentImg.actresses && currentImg.actresses.length > 0 && (
+                                <div style={{ marginTop: '1.5rem' }}>
+                                  <span className="book-prompt-label">Featured in Graphic</span>
+                                  <div className="book-actresses-row" style={{ marginTop: '0.4rem' }}>
+                                    {currentImg.actresses.map(act => (
+                                      <div key={act.id} className="book-actress-chip">
+                                        <img src={act.profile_picture || '/logo.svg'} alt={act.name} className="book-actress-avatar" />
+                                        <span style={{ fontSize: '0.75rem' }}>{act.name}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()
+                  )}
+                </div>
+
+                {/* Navigation Arrows inside book frame */}
+                {activePage > 0 && (
+                  <button className="book-nav-btn book-nav-btn-left" onClick={prevPage} title="Previous Page">
+                    <ChevronLeft size={24} />
+                  </button>
+                )}
+
+                {activePage < (selectedStory.images?.length || 0) && (
+                  <button className="book-nav-btn book-nav-btn-right" onClick={nextPage} title="Next Page">
+                    <ChevronRight size={24} />
+                  </button>
                 )}
               </div>
-
-              {/* Navigation Arrows inside book frame */}
-              {activePage > 0 && (
-                <button className="book-nav-btn book-nav-btn-left" onClick={prevPage} title="Previous Page">
-                  <ChevronLeft size={24} />
-                </button>
-              )}
-
-              {activePage < (selectedStory.images?.length || 0) && (
-                <button className="book-nav-btn book-nav-btn-right" onClick={nextPage} title="Next Page">
-                  <ChevronRight size={24} />
-                </button>
-              )}
-            </div>
+            )}
 
             {/* Bottom Page Indicator and dot navigation */}
             <div className="book-viewer-footer">
               <div className="book-page-indicator">
-                Page {activePage + 1} of {(selectedStory.images?.length || 0) + 1}
+                {slideshowMode
+                  ? `Image ${activePage} of ${selectedStory.images?.length || 0}`
+                  : `Page ${activePage + 1} of ${(selectedStory.images?.length || 0) + 1}`
+                }
               </div>
               <div className="book-dots-nav">
                 <button
                   className={`book-dot-btn ${activePage === 0 ? 'active' : ''}`}
-                  onClick={() => setActivePage(0)}
+                  onClick={() => {
+                    setSlideshowMode(false);
+                    setActivePage(0);
+                  }}
                   title="Cover"
                 />
                 {selectedStory.images?.map((_, idx) => (
                   <button
                     key={idx}
                     className={`book-dot-btn ${activePage === idx + 1 ? 'active' : ''}`}
-                    onClick={() => setActivePage(idx + 1)}
+                    onClick={() => {
+                      if (slideshowMode && idx + 1 === 0) {
+                        setSlideshowMode(false);
+                      }
+                      setActivePage(idx + 1);
+                    }}
                     title={`Illustration ${idx + 1}`}
                   />
                 ))}

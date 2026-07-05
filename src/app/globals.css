@@ -883,6 +883,36 @@ h6 {
   color: #ef4444;
 }
 
+@media (max-width: 640px) {
+  .toggle-text-label {
+    display: none;
+  }
+
+  .view-toggle-btn {
+    padding: 0.5rem;
+    /* Make padding square/smaller for icon-only mode */
+    justify-content: center;
+  }
+}
+
+@media (max-width: 768px) {
+  /* ... existing styles ... */
+
+  .gallery-masonry {
+    column-count: 3 !important;
+    /* Forces 2 columns on mobile */
+    column-gap: 0.75rem !important;
+  }
+}
+
+@media (max-width: 480px) {
+
+  /* You can keep this at 2 as well, or revert to 1 if it gets too cramped */
+  .gallery-masonry {
+    column-count: 2 !important;
+  }
+}
+
 /* Image Detail Modal Specifics */
 .detail-modal-grid {
   display: grid;
@@ -1785,6 +1815,333 @@ input:checked+.slider:before {
   color: var(--text-primary) !important;
 }
 
+/* View Toggle Control */
+.view-toggle-container {
+  display: flex;
+  background: var(--input-bg);
+  border: 1px solid var(--border-glass);
+  padding: 0.25rem;
+  border-radius: 12px;
+  gap: 0.25rem;
+}
+
+.view-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.view-toggle-btn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.view-toggle-btn.active {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border-color: var(--border-glass-glow);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), var(--glow-shadow);
+}
+
+/* Filter Bar Wrapper styling */
+.filter-bar-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+  align-items: center;
+}
+
+.filter-search-row {
+  display: flex;
+  align-items: center;
+  flex: 1;
+}
+
+.filter-search-row .search-box {
+  width: 100%;
+}
+
+.mobile-filter-toggle {
+  display: none;
+  /* Hidden on desktop */
+}
+
+.filter-options-panel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+/* Masonry Gallery View */
+.gallery-masonry {
+  column-count: 4;
+  column-gap: 1.5rem;
+  width: 100%;
+  margin-top: 1rem;
+  animation: fadeIn 0.4s ease;
+}
+
+.gallery-masonry-item {
+  break-inside: avoid;
+  margin-bottom: 1.5rem;
+  border-radius: var(--card-radius);
+  overflow: hidden;
+  border: 1px solid var(--border-glass);
+  background: var(--bg-glass);
+  box-shadow: var(--glass-shadow);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.gallery-masonry-item img {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: cover;
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.gallery-masonry-item:hover {
+  transform: translateY(-4px);
+  border-color: var(--border-glass-glow);
+  box-shadow: var(--glass-shadow), var(--glow-shadow);
+}
+
+.gallery-masonry-item:hover img {
+  transform: scale(1.04);
+}
+
+/* Lightbox Overlay */
+.lightbox-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(4, 5, 8, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.25s ease-out;
+}
+
+/* Main content */
+.lightbox-content-container {
+  max-width: 85vw;
+  max-height: 70vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), var(--glow-shadow);
+  border: 1px solid var(--border-glass);
+}
+
+.lightbox-main-img {
+  max-width: 100%;
+  max-height: 70vh;
+  object-fit: contain;
+  display: block;
+  user-select: none;
+  animation: slideFadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Close Button */
+.lightbox-close-btn {
+  position: absolute;
+  top: 2rem;
+  right: 2rem;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-glass);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 2100;
+  transition: all 0.25s ease;
+}
+
+.lightbox-close-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fff;
+  border-color: rgba(239, 68, 68, 0.4);
+  transform: scale(1.1) rotate(90deg);
+}
+
+/* Nav Buttons */
+.lightbox-nav-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-glass);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 2050;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.lightbox-nav-btn:hover {
+  background: var(--accent-purple);
+  color: #fff;
+  border-color: var(--accent-purple-glow);
+  transform: translateY(-50%) scale(1.1);
+  box-shadow: 0 0 20px var(--accent-purple-glow);
+}
+
+.lightbox-nav-prev {
+  left: 2.5rem;
+}
+
+.lightbox-nav-next {
+  right: 2.5rem;
+}
+
+/* Bottom Thumbnails Strip */
+.lightbox-thumbnails-wrapper {
+  position: absolute;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 4rem);
+  max-width: 800px;
+  background: rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--border-glass);
+  border-radius: 16px;
+  padding: 0.75rem;
+  overflow: hidden;
+  z-index: 2050;
+  box-shadow: var(--glass-shadow);
+}
+
+.lightbox-thumbnails-scroll {
+  display: flex;
+  gap: 0.75rem;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  padding: 0.1rem;
+}
+
+.lightbox-thumbnails-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.lightbox-thumbnail-item {
+  width: 60px;
+  height: 60px;
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.25s ease;
+  opacity: 0.5;
+}
+
+.lightbox-thumbnail-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.lightbox-thumbnail-item:hover {
+  opacity: 0.85;
+}
+
+.lightbox-thumbnail-item.active {
+  opacity: 1;
+  border-color: var(--accent-purple);
+  box-shadow: 0 0 10px var(--accent-purple-glow);
+  transform: scale(1.05);
+}
+
+/* Responsive Masonry columns */
+@media (max-width: 1200px) {
+  .gallery-masonry {
+    column-count: 3;
+  }
+}
+
+@media (max-width: 768px) {
+  .gallery-masonry {
+    column-count: 2;
+    column-gap: 0.75rem;
+  }
+
+  .gallery-masonry-item {
+    margin-bottom: 0.75rem;
+    border-radius: 12px;
+  }
+
+  .lightbox-nav-btn {
+    width: 44px;
+    height: 44px;
+  }
+
+  .lightbox-nav-prev {
+    left: 1rem;
+  }
+
+  .lightbox-nav-next {
+    right: 1rem;
+  }
+
+  .lightbox-thumbnails-wrapper {
+    bottom: 1rem;
+    width: calc(100% - 2rem);
+    padding: 0.5rem;
+  }
+
+  .lightbox-thumbnail-item {
+    width: 44px;
+    height: 44px;
+  }
+
+  .lightbox-close-btn {
+    top: 1rem;
+    right: 1rem;
+    width: 40px;
+    height: 40px;
+  }
+}
+
+@media (max-width: 480px) {
+  .gallery-masonry {
+    column-count: 1;
+  }
+}
+
 /* Responsive styles */
 @media (max-width: 1024px) {
   .sidebar {
@@ -1872,34 +2229,92 @@ input:checked+.slider:before {
     grid-template-columns: 1fr;
   }
 
-  /* Horizontal single row filter bar on mobile */
-  .filter-bar {
-    flex-wrap: nowrap !important;
-    overflow-x: auto !important;
-    padding-bottom: 0.5rem;
-    -webkit-overflow-scrolling: touch;
-    justify-content: flex-start;
-    scrollbar-width: none;
-    /* hide scrollbars in Firefox */
+  /* Collapsible filter bar styling on mobile */
+  .filter-bar-wrapper {
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 0.75rem !important;
+    padding: 1rem !important;
   }
 
-  .filter-bar::-webkit-scrollbar {
+  .filter-search-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+  }
+
+  .filter-search-row .search-box {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .mobile-filter-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.25s ease;
+    flex-shrink: 0;
+  }
+
+  .mobile-filter-toggle:hover {
+    color: var(--text-primary);
+    border-color: var(--border-glass-glow);
+  }
+
+  .mobile-filter-toggle.active {
+    background: var(--bg-secondary);
+    color: var(--accent-purple);
+    border-color: var(--border-glass-glow);
+    box-shadow: var(--glow-shadow);
+  }
+
+  .filter-options-panel {
     display: none;
-    /* hide scrollbars in Chrome/Safari */
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+    width: 100%;
+    margin-top: 0.5rem;
+    animation: slideDown 0.2s ease-out forwards;
   }
 
-  .search-box {
-    flex-shrink: 0;
-    width: 180px;
+  .filter-options-panel.show-mobile {
+    display: flex;
   }
 
-  .filter-select {
-    flex-shrink: 0;
-    min-width: 110px;
+  .filter-options-panel .filter-select {
+    width: 100%;
+    min-width: unset;
   }
 
-  .gallery-tabs {
-    flex-shrink: 0;
+  .filter-options-panel .gallery-tabs {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .filter-options-panel .tab-btn {
+    flex: 1;
+    text-align: center;
+  }
+
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 
   /* Mobile 2-column styling for Runeterra style Actress Cards */
@@ -2484,6 +2899,148 @@ input:checked+.slider:before {
   -webkit-backdrop-filter: blur(12px);
 }
 
+/* Story Slideshow Mode Styles */
+.story-slideshow-container {
+  flex: 1;
+  width: 100%;
+  background: radial-gradient(circle at center, #0f1016 0%, #050508 100%);
+  border: 4px solid #000;
+  border-radius: 20px;
+  position: relative;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 40px rgba(168, 85, 247, 0.1);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  min-height: 55vh;
+}
+
+.story-slideshow-fullscreen {
+  height: 100vh;
+  width: 100%;
+}
+
+.story-slideshow-content {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.story-slideshow-image-wrapper {
+  max-width: 100%;
+  max-height: 60vh;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border-glass);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+}
+
+.story-slideshow-image {
+  max-width: 100%;
+  max-height: 60vh;
+  object-fit: contain;
+  display: block;
+}
+
+.story-exit-slideshow-btn {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: var(--glow-shadow);
+}
+
+.btn-slideshow-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: linear-gradient(135deg, var(--accent-purple), var(--accent-blue)) !important;
+  border: none !important;
+  font-weight: 600 !important;
+  color: white !important;
+  box-shadow: var(--glow-shadow) !important;
+  padding: 0.45rem 0.9rem !important;
+  border-radius: 8px !important;
+  transition: all 0.2s ease !important;
+}
+
+.btn-slideshow-toggle:hover {
+  filter: brightness(1.1) !important;
+  transform: translateY(-1px) !important;
+}
+
+@media (max-width: 640px) {
+  .book-actions-area .btn span {
+    display: none;
+  }
+
+  .book-actions-area .btn {
+    padding: 0.5rem !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .btn-slideshow-toggle .btn-text-label {
+    display: none;
+  }
+
+  /* Ensure the button looks balanced when it becomes icon-only */
+  .btn-slideshow-toggle {
+    padding: 0.45rem !important;
+    /* Make it square-ish */
+  }
+}
+
+@media (max-width: 640px) {
+
+  /* Reduce the margins of the navigation arrows */
+  .book-nav-btn-left {
+    left: 0.5rem !important;
+    /* Move closer to the left edge */
+  }
+
+  .book-nav-btn-right {
+    right: 0.5rem !important;
+    /* Move closer to the right edge */
+  }
+
+  /* Optional: Make the arrow buttons slightly smaller on mobile to keep proportions */
+  .book-nav-btn {
+    width: 40px !important;
+    height: 40px !important;
+  }
+}
+
+/* Slideshow Container adjustments */
+@media (max-width: 640px) {
+  .book-viewer-container {
+    height: 100vh;
+    /* Fullscreen on mobile */
+    max-width: 100%;
+  }
+
+  /* Remove container borders/shadows when in slideshow mode on mobile */
+  .slideshow-mode-active .story-slideshow-container {
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: #000 !important;
+  }
+}
+
 .book-viewer-container {
   position: relative;
   z-index: 1010;
@@ -2878,6 +3435,46 @@ input:checked+.slider:before {
   to {
     opacity: 1;
     transform: scale(1) translateX(0);
+  }
+}
+
+.page-count-mobile {
+  display: none;
+}
+
+.page-count-full {
+  display: inline;
+}
+
+/* On mobile (e.g., 640px or less), swap them */
+@media (max-width: 640px) {
+  .page-count-full {
+    display: none;
+  }
+
+  .page-count-mobile {
+    display: inline;
+  }
+
+  /* Optional: Make the badge smaller/circular since it's now just a number */
+  .story-card-page-count {
+    padding: 0.35rem 0.6rem;
+  }
+}
+
+@media (max-width: 640px) {
+
+  /* Reduce side margins for corner elements */
+  .story-card-actresses {
+    top: 0.5rem !important;
+    left: 0.5rem !important;
+    padding: 0.2rem 0.3rem !important;
+  }
+
+  .story-card-page-count {
+    top: 0.5rem !important;
+    right: 0.5rem !important;
+    padding: 0.2rem 0.5rem !important;
   }
 }
 
