@@ -18,6 +18,9 @@ export default function GalleryPage() {
   const [selectedActress, setSelectedActress] = useState('');
   const [activeTab, setActiveTab] = useState('all'); // 'all' or 'favorites'
 
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+
   // Image Detail Modal State
   const [selectedImage, setSelectedImage] = useState(null);
   const [copied, setCopied] = useState(false);
@@ -64,6 +67,11 @@ export default function GalleryPage() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedCategory, selectedActress, activeTab]);
 
   // Handle Favorites toggle
   const handleToggleFavorite = async (id, e) => {
@@ -180,6 +188,52 @@ export default function GalleryPage() {
 
     return matchesSearch && matchesCategory && matchesActress && matchesTab;
   });
+
+  // Pagination Constants & Logic
+  const ITEMS_PER_PAGE = 12;
+  const totalPages = Math.ceil(filteredImages.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const paginatedImages = filteredImages.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisiblePages = 5;
+
+    if (totalPages <= maxVisiblePages) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      // Always show first page
+      pages.push(1);
+
+      let start = Math.max(2, currentPage - 1);
+      let end = Math.min(totalPages - 1, currentPage + 1);
+
+      if (currentPage <= 3) {
+        end = 4;
+      } else if (currentPage >= totalPages - 2) {
+        start = totalPages - 3;
+      }
+
+      if (start > 2) {
+        pages.push('ellipsis1');
+      }
+
+      for (let i = start; i <= end; i++) {
+        pages.push(i);
+      }
+
+      if (end < totalPages - 1) {
+        pages.push('ellipsis2');
+      }
+
+      // Always show last page
+      pages.push(totalPages);
+    }
+
+    return pages;
+  };
 
   if (loading) {
     return (
@@ -300,7 +354,7 @@ export default function GalleryPage() {
         </div>
       ) : viewMode === 'gallery' ? (
         <div className="gallery-masonry">
-          {filteredImages.map((img, idx) => (
+          {paginatedImages.map((img, idx) => (
             <div
               key={img.id}
               className="gallery-masonry-item"
@@ -312,7 +366,7 @@ export default function GalleryPage() {
         </div>
       ) : (
         <div className="gallery-grid">
-          {filteredImages.map((img) => {
+          {paginatedImages.map((img) => {
             const actressNames = img.actresses?.map(a => a.name).join(', ') || 'N/A';
             return (
               <div
@@ -337,6 +391,63 @@ export default function GalleryPage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div style={{ marginTop: '2rem' }}>
+          <div className="pagination-container">
+            <button
+              className="pagination-btn"
+              disabled={currentPage === 1}
+              onClick={() => {
+                setCurrentPage(prev => Math.max(prev - 1, 1));
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              aria-label="Previous Page"
+            >
+              <ChevronLeft size={18} />
+            </button>
+
+            {getPageNumbers().map((page, index) => {
+              if (page === 'ellipsis1' || page === 'ellipsis2') {
+                return (
+                  <span key={`ellipsis-${index}`} className="pagination-ellipsis">
+                    ...
+                  </span>
+                );
+              }
+
+              return (
+                <button
+                  key={page}
+                  className={`pagination-btn ${currentPage === page ? 'active' : ''}`}
+                  onClick={() => {
+                    setCurrentPage(page);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                >
+                  {page}
+                </button>
+              );
+            })}
+
+            <button
+              className="pagination-btn"
+              disabled={currentPage === totalPages}
+              onClick={() => {
+                setCurrentPage(prev => Math.min(prev + 1, totalPages));
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              aria-label="Next Page"
+            >
+              <ChevronRight size={18} />
+            </button>
+          </div>
+          <div className="pagination-info">
+            Showing {startIndex + 1}–{Math.min(startIndex + ITEMS_PER_PAGE, filteredImages.length)} of {filteredImages.length} graphics
+          </div>
         </div>
       )}
 
@@ -537,7 +648,7 @@ export default function GalleryPage() {
       {/* GALLERY LIGHTBOX OVERLAY */}
       {lightboxIndex !== null && (
         <LightboxModal
-          images={filteredImages}
+          images={paginatedImages}
           currentIndex={lightboxIndex}
           onClose={() => setLightboxIndex(null)}
           onNavigate={(newIndex) => setLightboxIndex(newIndex)}
