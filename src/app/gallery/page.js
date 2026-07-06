@@ -5,6 +5,7 @@ import { Search, Heart, Copy, Check, X, ExternalLink, Sparkles, SlidersHorizonta
 import Link from 'next/link';
 import ActressMultiSelect from '@/components/ActressMultiSelect';
 import CategoryMultiSelect from '@/components/CategoryMultiSelect';
+import VirtualItem from '@/components/VirtualItem';
 
 export default function GalleryPage() {
   const [images, setImages] = useState([]);
@@ -301,13 +302,14 @@ export default function GalleryPage() {
       ) : viewMode === 'gallery' ? (
         <div className="gallery-masonry">
           {filteredImages.map((img, idx) => (
-            <div
+            <VirtualItem
               key={img.id}
               className="gallery-masonry-item"
               onClick={() => setLightboxIndex(idx)}
+              defaultHeight={300}
             >
               <img src={img.url} alt={img.prompt || "AI Graphic"} loading="lazy" />
-            </div>
+            </VirtualItem>
           ))}
         </div>
       ) : (
@@ -315,10 +317,11 @@ export default function GalleryPage() {
           {filteredImages.map((img) => {
             const actressNames = img.actresses?.map(a => a.name).join(', ') || 'N/A';
             return (
-              <div
+              <VirtualItem
                 key={img.id}
                 className="gallery-card"
                 onClick={() => setSelectedImage(img)}
+                defaultHeight={400}
               >
                 <img src={img.url} alt="AI Art" className="gallery-card-img" />
                 <div className="gallery-card-overlay">
@@ -334,7 +337,7 @@ export default function GalleryPage() {
                     </button>
                   </div>
                 </div>
-              </div>
+              </VirtualItem>
             );
           })}
         </div>
