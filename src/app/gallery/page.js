@@ -14,8 +14,8 @@ export default function GalleryPage() {
 
   // Filter States
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('');
-  const [selectedActress, setSelectedActress] = useState('');
+  const [selectedCategories, setSelectedCategories] = useState([]);
+  const [selectedActresses, setSelectedActresses] = useState([]);
   const [activeTab, setActiveTab] = useState('all'); // 'all' or 'favorites'
 
   // Pagination State
@@ -71,7 +71,7 @@ export default function GalleryPage() {
   // Reset pagination when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, selectedCategory, selectedActress, activeTab]);
+  }, [searchQuery, selectedCategories, selectedActresses, activeTab]);
 
   // Handle Favorites toggle
   const handleToggleFavorite = async (id, e) => {
@@ -177,11 +177,11 @@ export default function GalleryPage() {
     // 1. Search Query (match prompt text)
     const matchesSearch = img.prompt.toLowerCase().includes(searchQuery.toLowerCase());
 
-    // 2. Category Filter
-    const matchesCategory = selectedCategory === '' || img.categories?.some(c => c.id === selectedCategory);
+    // 2. Category Filter (Matches if selectedCategories is empty, or if image belongs to ANY of the selected categories)
+    const matchesCategory = selectedCategories.length === 0 || img.categories?.some(c => selectedCategories.includes(c.id));
 
     // 3. Actress Filter (Checks many-to-many list)
-    const matchesActress = selectedActress === '' || img.actresses?.some(a => a.id === selectedActress);
+    const matchesActress = selectedActresses.length === 0 || img.actresses?.some(a => selectedActresses.includes(a.id));
 
     // 4. Tab Filter (All vs Favorites)
     const matchesTab = activeTab === 'all' || img.favorite === true;
@@ -304,28 +304,20 @@ export default function GalleryPage() {
         {/* Filters Selects and Tabs */}
         <div className={`filter-options-panel ${showMobileFilters ? 'show-mobile' : ''}`}>
           {/* Actress Filter */}
-          <select
-            className="form-select filter-select"
-            value={selectedActress}
-            onChange={(e) => setSelectedActress(e.target.value)}
-          >
-            <option value="">All Actresses</option>
-            {actresses.map(act => (
-              <option key={act.id} value={act.id}>{act.name}</option>
-            ))}
-          </select>
+          <ActressMultiSelect
+            actresses={actresses}
+            selectedIds={selectedActresses}
+            onChange={setSelectedActresses}
+            placeholder="All Actresses"
+          />
 
           {/* Category Filter */}
-          <select
-            className="form-select filter-select"
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-          >
-            <option value="">All Categories</option>
-            {categories.map(cat => (
-              <option key={cat.id} value={cat.id}>{cat.name}</option>
-            ))}
-          </select>
+          <CategoryMultiSelect
+            categories={categories}
+            selectedIds={selectedCategories}
+            onChange={setSelectedCategories}
+            placeholder="All Categories"
+          />
 
           {/* Tabs: All vs Favorites */}
           <div className="gallery-tabs">

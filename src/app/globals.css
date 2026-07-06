@@ -1860,6 +1860,8 @@ input:checked+.slider:before {
   gap: 1.5rem;
   margin-bottom: 2rem;
   align-items: center;
+  position: relative;
+  z-index: 100;
 }
 
 .filter-search-row {
@@ -3977,6 +3979,7 @@ input:checked+.slider:before {
     transform: scale(0.5);
     opacity: 0;
   }
+
   to {
     transform: scale(1);
     opacity: 1;
@@ -4048,4 +4051,20 @@ input:checked+.slider:before {
   margin-top: 0.5rem;
   text-align: center;
   font-weight: 500;
+}
+
+/* Custom layouts for multi-selects in the gallery filter bar */
+.filter-options-panel .actress-multiselect-container,
+.filter-options-panel .category-multiselect-container {
+  min-width: 240px;
+  max-width: 240px;
+}
+
+@media (max-width: 768px) {
+
+  .filter-options-panel .actress-multiselect-container,
+  .filter-options-panel .category-multiselect-container {
+    min-width: 100%;
+    max-width: 100%;
+  }
 }
