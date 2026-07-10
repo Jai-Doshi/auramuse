@@ -1111,6 +1111,7 @@ export async function toggleUserCardFavorite(userId, imageId) {
 export async function claimDailyPack(userId) {
   const claim = await getUserClaims(userId);
   const now = new Date();
+  let claimsCount = 1;
 
   if (claim) {
     const lastClaimed = new Date(claim.last_claimed_at);
@@ -1118,7 +1119,13 @@ export async function claimDailyPack(userId) {
       lastClaimed.getMonth() === now.getMonth() &&
       lastClaimed.getDate() === now.getDate();
     if (isSameDay) {
-      throw new Error('You have already claimed your daily pack today!');
+      const currentClaims = claim.claims_today !== undefined ? claim.claims_today : 1;
+      if (currentClaims >= 10) {
+        throw new Error('You have already claimed the maximum limit of 10 packs today!');
+      }
+      claimsCount = currentClaims + 1;
+    } else {
+      claimsCount = 1;
     }
   }
 
@@ -1260,13 +1267,20 @@ export async function claimDailyPack(userId) {
     if (claim) {
       const { error } = await supabase
         .from('user_claims')
-        .update({ last_claimed_at: now.toISOString() })
+        .update({ 
+          last_claimed_at: now.toISOString(),
+          claims_today: claimsCount
+        })
         .eq('user_id', userId);
       if (error) throw error;
     } else {
       const { error } = await supabase
         .from('user_claims')
-        .insert([{ user_id: userId, last_claimed_at: now.toISOString() }]);
+        .insert([{ 
+          user_id: userId, 
+          last_claimed_at: now.toISOString(),
+          claims_today: claimsCount
+        }]);
       if (error) throw error;
     }
   } else {
@@ -1275,10 +1289,12 @@ export async function claimDailyPack(userId) {
     const foundIndex = db.user_claims.findIndex(uc => uc.user_id === userId);
     if (foundIndex !== -1) {
       db.user_claims[foundIndex].last_claimed_at = now.toISOString();
+      db.user_claims[foundIndex].claims_today = claimsCount;
     } else {
       db.user_claims.push({
         user_id: userId,
-        last_claimed_at: now.toISOString()
+        last_claimed_at: now.toISOString(),
+        claims_today: claimsCount
       });
     }
     writeLocalDb(db);

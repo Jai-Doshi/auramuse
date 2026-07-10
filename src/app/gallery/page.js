@@ -405,6 +405,47 @@ export default function GalleryPage() {
         </div>
       ) : viewMode === 'gallery' ? (
         <div className="gallery-masonry">
+          {paginatedImages.map((img, idx) => (
+            <div
+              key={img.id}
+              className="gallery-masonry-item"
+              onClick={() => setLightboxIndex(idx)}
+            >
+              <img src={img.url} alt={img.prompt || "AI Graphic"} loading="lazy" />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="gallery-grid">
+          {paginatedImages.map((img) => {
+            const actressNames = img.actresses?.map(a => a.name).join(', ') || 'N/A';
+            return (
+              <div
+                key={img.id}
+                className="gallery-card"
+                onClick={() => setSelectedImage(img)}
+              >
+                <img src={img.url} alt="AI Art" className="gallery-card-img" />
+                <div className="gallery-card-overlay">
+                  <p className="gallery-card-prompt">{img.prompt}</p>
+                  <div className="gallery-card-meta">
+                    <span className="gallery-card-actress">{actressNames}</span>
+                    <button
+                      className={`gallery-card-favorite-btn ${img.favorite ? 'favorited' : ''}`}
+                      onClick={(e) => handleToggleFavorite(img.id, e)}
+                      aria-label="Favorite image"
+                    >
+                      <Heart size={20} fill={img.favorite ? '#ef4444' : 'none'} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {/* : viewMode === 'gallery' ? (
+        <div className="gallery-masonry">
           {paginatedImages.map((img, idx) => {
             const { owned, count } = getCardCollectionDetails(img.id);
             return (
@@ -438,7 +479,7 @@ export default function GalleryPage() {
                 onClick={() => setSelectedImage(img)}
               >
                 <img src={img.url} alt="AI Art" className={`gallery-card-img ${!owned ? 'blur-locked-img' : ''}`} />
-                
+
                 {!owned ? (
                   <div className="locked-card-overlay-el">
                     <Lock size={24} className="text-muted" style={{ marginBottom: '0.5rem' }} />
@@ -481,7 +522,7 @@ export default function GalleryPage() {
             );
           })}
         </div>
-      )}
+      )} */}
 
       {/* Pagination Controls */}
       {totalPages > 1 && (

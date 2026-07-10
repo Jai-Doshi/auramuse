@@ -13,6 +13,7 @@ export default function UserDashboard() {
   const [allActresses, setAllActresses] = useState([]);
   const [collection, setCollection] = useState([]);
   const [lastClaimDate, setLastClaimDate] = useState(null);
+  const [claimsToday, setClaimsToday] = useState(0);
   const [loading, setLoading] = useState(true);
 
   // Daily pack opening states
@@ -57,9 +58,17 @@ export default function UserDashboard() {
       setCollection(collData.cards || []);
 
       if (collData.claim) {
-        setLastClaimDate(new Date(collData.claim.last_claimed_at));
+        const claimDate = new Date(collData.claim.last_claimed_at);
+        const now = new Date();
+        const isSameDay = claimDate.getFullYear() === now.getFullYear() &&
+          claimDate.getMonth() === now.getMonth() &&
+          claimDate.getDate() === now.getDate();
+
+        setLastClaimDate(claimDate);
+        setClaimsToday(isSameDay ? (collData.claim.claims_today || 0) : 0);
       } else {
         setLastClaimDate(null);
+        setClaimsToday(0);
       }
     } catch (e) {
       console.error('Failed to load user dashboard data', e);
@@ -76,7 +85,10 @@ export default function UserDashboard() {
 
   // Daily claim countdown timer
   useEffect(() => {
-    if (!lastClaimDate) return;
+    if (!lastClaimDate || claimsToday < 10) {
+      setTimeRemaining('');
+      return;
+    }
 
     const timer = setInterval(() => {
       const now = new Date();
@@ -115,7 +127,7 @@ export default function UserDashboard() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [lastClaimDate]);
+  }, [lastClaimDate, claimsToday]);
 
   // Daily claim countdown timer (Changed to 2 seconds cooldown)
   // useEffect(() => {
@@ -265,9 +277,12 @@ export default function UserDashboard() {
                 <Zap size={20} className="text-purple" style={{ display: 'inline', marginRight: '0.5rem', verticalAlign: 'middle' }} />
                 Daily Free Pack
               </h3>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
                 Every day you get a pack of 3 randomized actress cards. Duplicate cards increase card power!
               </p>
+              <div style={{ fontSize: '0.9rem', fontWeight: 'bold', color: 'var(--text-secondary)', marginBottom: '1.5rem', textAlign: 'center' }}>
+                Packs claimed today: <span style={{ color: 'var(--accent-purple)', fontSize: '1.1rem', fontWeight: '800' }}>{claimsToday}</span> / 10
+              </div>
 
               <div className="pack-stage">
                 {canClaim ? (
@@ -325,10 +340,10 @@ export default function UserDashboard() {
                     'Preparing Pack...'
                   ) : canClaim ? (
                     <>
-                      <Sparkles size={18} /> Tearing Open Pack!
+                      <Sparkles size={18} /> Claim Pack {claimsToday + 1} / 10
                     </>
                   ) : (
-                    'Claimed Today'
+                    'Daily Limit Reached'
                   )}
                 </button>
               </div>

@@ -5527,8 +5527,13 @@ input:checked+.slider:before {
 }
 
 @keyframes premiumGlowPulse {
-  0% { box-shadow: 0 0 15px rgba(212, 175, 55, 0.4); }
-  100% { box-shadow: 0 0 30px rgba(212, 175, 55, 0.8); }
+  0% {
+    box-shadow: 0 0 15px rgba(212, 175, 55, 0.4);
+  }
+
+  100% {
+    box-shadow: 0 0 30px rgba(212, 175, 55, 0.8);
+  }
 }
 
 .profile-badge-row {
@@ -5651,7 +5656,7 @@ input:checked+.slider:before {
   border: 1px solid var(--border-glass);
   border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
   display: flex;
   flex-direction: column;
 }
@@ -5764,30 +5769,169 @@ input:checked+.slider:before {
   .profile-cover-banner {
     height: 160px;
   }
+
   .profile-header-card {
     margin-top: -60px;
     padding: 0 1rem 1.5rem 1rem !important;
   }
+
   .profile-avatar-outer {
     width: 100px;
     height: 100px;
   }
+
   .profile-counters-row {
     grid-template-columns: repeat(2, 1fr);
     gap: 1rem;
     padding: 1rem 0;
   }
+
   .counter-item {
     border-right: none;
   }
+
   .counter-item:nth-child(2n) {
     border-left: 1px solid var(--border-glass);
   }
+
   .profile-nav-tabs {
     flex-wrap: wrap;
   }
+
   .profile-nav-tab-btn {
     padding: 0.5rem 0.85rem;
     font-size: 0.85rem;
+  }
+}
+
+/* Container for profile actions to stack smoothly on mobile */
+.profile-actions-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 340px;
+  margin-top: 0.5rem;
+}
+
+/* Hidden by default on desktop layouts */
+.mobile-logout-btn {
+  margin-top: 10px;
+  display: none !important;
+  width: 100%;
+  padding: 0.5rem 1.5rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+/* Responsive updates for small screens */
+@media (max-width: 768px) {
+  .mobile-logout-btn {
+    display: flex !important;
+    /* Visible underneath on mobile viewports */
+  }
+
+  .desktop-logout-btn {
+    display: none !important;
+    /* Hides duplicate button in preference pane */
+  }
+}
+
+/* Responsive Layout for Unlocked Muses Tab Component */
+.muses-tab-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 1.25rem;
+  width: 100%;
+}
+
+.muse-grid-item {
+  padding: 1rem;
+  text-align: center;
+  border-radius: var(--card-radius);
+  background: rgba(255, 255, 255, 0.01);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.muse-grid-item.unlocked {
+  opacity: 1;
+  border: 1px solid var(--accent-purple);
+  box-shadow: inset 0 0 12px rgba(168, 85, 247, 0.05);
+}
+
+.muse-grid-item.locked {
+  opacity: 0.5;
+  border: 1px solid var(--border-glass);
+}
+
+.muse-avatar-wrapper {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  overflow: hidden;
+  margin-bottom: 0.75rem;
+  border: 2px solid rgba(255, 255, 255, 0.05);
+  flex-shrink: 0;
+}
+
+.muse-grid-item.unlocked .muse-avatar-wrapper {
+  border-color: var(--accent-purple-glow);
+}
+
+.muse-grid-avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.muse-grid-name {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #fff;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: 0.25rem;
+}
+
+.muse-grid-status {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+/* Smart viewport overrides for small displays */
+@media (max-width: 640px) {
+  .muse-tab-card {
+    padding: 1.25rem !important;
+  }
+
+  .muses-tab-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    /* Lock to geometric 2-columns on mobile layout */
+    gap: 0.75rem !important;
+  }
+
+  .muse-grid-item {
+    padding: 0.85rem 0.5rem !important;
+  }
+
+  .muse-avatar-wrapper {
+    width: 54px;
+    height: 54px;
+    margin-bottom: 0.5rem;
+  }
+
+  .muse-grid-name {
+    font-size: 0.8rem;
+  }
+
+  .muse-grid-status {
+    font-size: 0.7rem;
   }
 }

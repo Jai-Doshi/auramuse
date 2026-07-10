@@ -156,7 +156,8 @@ ALTER TABLE user_cards DISABLE ROW LEVEL SECURITY;
 -- 10. Create user_claims table (storing last claimed timestamps for daily packs)
 CREATE TABLE IF NOT EXISTS user_claims (
   user_id UUID REFERENCES app_users(id) ON DELETE CASCADE PRIMARY KEY,
-  last_claimed_at TIMESTAMPTZ DEFAULT now()
+  last_claimed_at TIMESTAMPTZ DEFAULT now(),
+  claims_today INTEGER DEFAULT 1
 );
 
 ALTER TABLE user_claims DISABLE ROW LEVEL SECURITY;

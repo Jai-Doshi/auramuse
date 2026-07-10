@@ -5,7 +5,8 @@ import { useTheme } from '@/components/ThemeContext';
 import {
   User, Mail, Phone, Sparkles, FolderPlus, UserPlus,
   BookOpen, Sun, Moon, Edit2, Check, Crown, Heart,
-  MessageCircle, Share2, Calendar, Lock, Award, Layers, Shield
+  MessageCircle, Share2, Calendar, Lock, Award, Layers, Shield, LogOut,
+  X, ChevronLeft, ChevronRight, Image as ImageIcon
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -22,6 +23,7 @@ export default function ProfilePage() {
 
   // Tab State
   const [activeTab, setActiveTab] = useState('feed'); // 'feed', 'muses', 'analytics' / 'admin-controls', 'settings'
+  const [lightboxIndex, setLightboxIndex] = useState(null);
 
   // Edit states
   const [isEditing, setIsEditing] = useState(false);
@@ -338,12 +340,24 @@ export default function ProfilePage() {
             <Share2 size={14} /> Share Profile
           </button>
         </div>
+
+        {/* Mobile Specific Sign Out Button */}
+        <button
+          onClick={logout}
+          className="btn btn-outline btn-danger mobile-logout-btn"
+          style={{ cursor: 'pointer' }}
+        >
+          Sign Out <LogOut size={20} />
+        </button>
       </div>
 
       {/* Tabs Navigation */}
       <div className="profile-nav-tabs">
         <button className={`profile-nav-tab-btn ${activeTab === 'feed' ? 'active' : ''}`} onClick={() => setActiveTab('feed')}>
           <Layers size={16} /> Prompt Feed
+        </button>
+        <button className={`profile-nav-tab-btn ${activeTab === 'gallery' ? 'active' : ''}`} onClick={() => setActiveTab('gallery')}>
+          <ImageIcon size={16} /> Gallery View
         </button>
         <button className={`profile-nav-tab-btn ${activeTab === 'muses' ? 'active' : ''}`} onClick={() => setActiveTab('muses')}>
           <User size={16} /> Unlocked Muses
@@ -386,11 +400,41 @@ export default function ProfilePage() {
                         <span className="post-author-name">{user?.name}</span>
                         <span className="post-time">Cataloged on {new Date(img.created_at || Date.now()).toLocaleDateString()}</span>
                       </div>
-                      {/* {isImgRare && (
-                        <span className="badge-rare-unlock" style={{ marginLeft: 'auto', fontSize: '0.75rem' }}>
-                          <Award size={12} /> RARE GRAPHIC
-                        </span>
-                      )} */}
+                      {img.actresses && img.actresses.length > 0 && (
+                        <div className="story-card-actresses" style={{ position: 'relative', top: 'auto', left: 'auto', marginLeft: 'auto', padding: '0.25rem 0.4rem 0.25rem 0.5rem' }}>
+                          {img.actresses.slice(0, 3).map((actress, idx) => (
+                            <img
+                              key={actress.id}
+                              src={actress.profile_picture || '/logo.svg'}
+                              alt={actress.name}
+                              className="story-card-actress-avatar"
+                              style={{
+                                marginLeft: idx === 0 ? '0' : '-8px',
+                                zIndex: 10 - idx
+                              }}
+                              title={actress.name}
+                            />
+                          ))}
+                          {img.actresses.length > 3 && (
+                            <div
+                              className="story-card-actress-avatar"
+                              style={{
+                                marginLeft: '-8px',
+                                zIndex: 5,
+                                background: 'var(--bg-secondary)',
+                                color: 'var(--text-primary)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '0.65rem',
+                                fontWeight: '700'
+                              }}
+                            >
+                              +{img.actresses.length - 3}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     {/* Image */}
@@ -447,23 +491,57 @@ export default function ProfilePage() {
           </div>
         )}
 
+        {/* PANEL 5: GALLERY VIEW */}
+        {activeTab === 'gallery' && (
+          <div className="glass-card" style={{ padding: '2rem' }}>
+            <h3 style={{ fontFamily: 'var(--font-display)', marginBottom: '1.5rem', color: '#fff' }}>Collected Art Gallery</h3>
+            {collectedImages.length === 0 ? (
+              <div className="story-empty-state" style={{ minHeight: '200px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                <ImageIcon size={48} className="text-muted" style={{ marginBottom: '1rem', color: 'var(--text-muted)' }} />
+                <h3>No collected graphics in your gallery</h3>
+                <p>Go unbox daily packs to fill your gallery!</p>
+              </div>
+            ) : (
+              <div className="gallery-masonry">
+                {collectedImages.slice(0, 20).map((img, idx) => (
+                  <div
+                    key={img.id}
+                    className="gallery-masonry-item"
+                    onClick={() => setLightboxIndex(idx)}
+                  >
+                    <img
+                      src={img.url}
+                      alt={img.prompt || "AI Graphic"}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* PANEL 2: UNLOCKED MUSES GRID */}
         {activeTab === 'muses' && (
-          <div className="glass-card" style={{ padding: '2rem' }}>
-            <h3 style={{ fontFamily: 'var(--font-display)', marginBottom: '1rem' }}>Unlocked Dossiers</h3>
+          <div className="glass-card muse-tab-card" style={{ padding: '2rem' }}>
+            <h3 style={{ fontFamily: 'var(--font-display)', marginBottom: '1.25rem' }}>Unlocked Dossiers</h3>
             {actresses.length === 0 ? (
               <p style={{ color: 'var(--text-muted)' }}>No actresses registered in system.</p>
             ) : (
-              <div className="social-feed-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '1rem' }}>
+              <div className="muses-tab-grid">
                 {actresses.map(actress => {
                   const unlocked = isAdmin || collection.some(c =>
                     c.image && c.image.actresses && c.image.actresses.some(act => act.id === actress.id)
                   );
                   return (
-                    <div key={actress.id} className="glass-card" style={{ padding: '0.75rem', textAlign: 'center', opacity: unlocked ? 1 : 0.45, border: unlocked ? '1px solid var(--accent-purple)' : '1px solid var(--border-glass)' }}>
-                      <img src={actress.profile_picture} alt={actress.name} style={{ width: '60px', height: '60px', borderRadius: '50%', objectFit: 'cover', margin: '0 auto 0.5rem' }} />
-                      <div style={{ fontWeight: '700', fontSize: '0.85rem', color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{actress.name}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{unlocked ? 'Unlocked' : '🔒 Locked'}</div>
+                    <div
+                      key={actress.id}
+                      className={`muse-grid-item ${unlocked ? 'unlocked' : 'locked'}`}
+                    >
+                      <div className="muse-avatar-wrapper">
+                        <img src={actress.profile_picture} alt={actress.name} className="muse-grid-avatar" />
+                      </div>
+                      <div className="muse-grid-name">{actress.name}</div>
+                      <div className="muse-grid-status">{unlocked ? 'Unlocked' : '🔒 Locked'}</div>
                     </div>
                   );
                 })}
@@ -708,6 +786,113 @@ export default function ProfilePage() {
           </div>
         )}
 
+        {/* GALLERY LIGHTBOX OVERLAY */}
+        {lightboxIndex !== null && (
+          <LightboxModal
+            images={collectedImages}
+            currentIndex={lightboxIndex}
+            onClose={() => setLightboxIndex(null)}
+            onNavigate={(newIndex) => setLightboxIndex(newIndex)}
+          />
+        )}
+
+      </div>
+    </div>
+  );
+}
+
+// Highly polished, details-free, scrolling Lightbox Modal for Gallery View
+function LightboxModal({ images, currentIndex, onClose, onNavigate }) {
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'ArrowLeft') {
+        if (currentIndex > 0) {
+          onNavigate(currentIndex - 1);
+        }
+      } else if (e.key === 'ArrowRight') {
+        if (currentIndex < images.length - 1) {
+          onNavigate(currentIndex + 1);
+        }
+      } else if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentIndex, images.length, onNavigate, onClose]);
+
+  useEffect(() => {
+    const activeThumb = document.getElementById(`lightbox-thumb-${currentIndex}`);
+    if (activeThumb) {
+      activeThumb.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+        inline: 'center'
+      });
+    }
+  }, [currentIndex]);
+
+  const currentImg = images[currentIndex];
+  if (!currentImg) return null;
+
+  return (
+    <div className="lightbox-overlay" onClick={onClose}>
+      {/* Close button */}
+      <button className="lightbox-close-btn" onClick={onClose} aria-label="Close Lightbox">
+        <X size={24} />
+      </button>
+
+      {/* Navigation Arrow Left */}
+      {currentIndex > 0 && (
+        <button
+          className="lightbox-nav-btn lightbox-nav-prev"
+          onClick={(e) => {
+            e.stopPropagation();
+            onNavigate(currentIndex - 1);
+          }}
+          aria-label="Previous Image"
+        >
+          <ChevronLeft size={28} />
+        </button>
+      )}
+
+      {/* Main Image Container */}
+      <div className="lightbox-content-container" onClick={(e) => e.stopPropagation()}>
+        <img
+          src={currentImg.url}
+          alt={currentImg.prompt || "Gallery Image"}
+          className="lightbox-main-img"
+        />
+      </div>
+
+      {/* Navigation Arrow Right */}
+      {currentIndex < images.length - 1 && (
+        <button
+          className="lightbox-nav-btn lightbox-nav-next"
+          onClick={(e) => {
+            e.stopPropagation();
+            onNavigate(currentIndex + 1);
+          }}
+          aria-label="Next Image"
+        >
+          <ChevronRight size={28} />
+        </button>
+      )}
+
+      {/* Bottom Thumbnail Strip */}
+      <div className="lightbox-thumbnails-wrapper" onClick={(e) => e.stopPropagation()}>
+        <div className="lightbox-thumbnails-scroll">
+          {images.map((img, idx) => (
+            <div
+              key={img.id}
+              id={`lightbox-thumb-${idx}`}
+              className={`lightbox-thumbnail-item ${idx === currentIndex ? 'active' : ''}`}
+              onClick={() => onNavigate(idx)}
+            >
+              <img src={img.url} alt={`Thumbnail ${idx}`} />
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
