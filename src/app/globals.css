@@ -5838,7 +5838,7 @@ input:checked+.slider:before {
   }
 }
 
-/* Responsive Layout for Unlocked Muses Tab Component */
+/* Optimized Layout for Unlocked Muses Tab Component */
 .muses-tab-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
@@ -5847,7 +5847,7 @@ input:checked+.slider:before {
 }
 
 .muse-grid-item {
-  padding: 1rem;
+  padding: 1.25rem 1rem;
   text-align: center;
   border-radius: var(--card-radius);
   background: rgba(255, 255, 255, 0.01);
@@ -5855,6 +5855,10 @@ input:checked+.slider:before {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: 0;
+  /* Prevents grid child blowout */
 }
 
 .muse-grid-item.unlocked {
@@ -5869,11 +5873,11 @@ input:checked+.slider:before {
 }
 
 .muse-avatar-wrapper {
-  width: 70px;
-  height: 70px;
+  width: 76px;
+  height: 76px;
   border-radius: 50%;
   overflow: hidden;
-  margin-bottom: 0.75rem;
+  margin: 0 auto 0.75rem auto;
   border: 2px solid rgba(255, 255, 255, 0.05);
   flex-shrink: 0;
 }
@@ -5893,10 +5897,18 @@ input:checked+.slider:before {
   font-size: 0.9rem;
   color: #fff;
   width: 100%;
+  margin-bottom: 0.35rem;
+  padding: 0 0.25rem;
+  box-sizing: border-box;
+
+  /* Allow clean wrapping up to 2 lines instead of clip overflowing */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
-  margin-bottom: 0.25rem;
+  word-break: break-word;
+  line-height: 1.3;
 }
 
 .muse-grid-status {
@@ -5905,30 +5917,32 @@ input:checked+.slider:before {
   font-weight: 500;
 }
 
-/* Smart viewport overrides for small displays */
+/* Smart viewport overrides for standard and extra small mobile layouts */
 @media (max-width: 640px) {
   .muse-tab-card {
-    padding: 1.25rem !important;
+    padding: 1rem !important;
   }
 
   .muses-tab-grid {
     grid-template-columns: repeat(2, 1fr) !important;
-    /* Lock to geometric 2-columns on mobile layout */
+    /* Force pristine 2-column symmetry */
     gap: 0.75rem !important;
   }
 
   .muse-grid-item {
-    padding: 0.85rem 0.5rem !important;
+    padding: 1rem 0.5rem !important;
   }
 
   .muse-avatar-wrapper {
-    width: 54px;
-    height: 54px;
+    width: 60px;
+    height: 60px;
     margin-bottom: 0.5rem;
   }
 
   .muse-grid-name {
     font-size: 0.8rem;
+    /* Scales down font to make room for long titles */
+    line-height: 1.25;
   }
 
   .muse-grid-status {
