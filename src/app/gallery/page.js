@@ -1,16 +1,37 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Search, Heart, Copy, Check, X, ExternalLink, Sparkles, SlidersHorizontal, ChevronLeft, ChevronRight, LayoutGrid, Image as ImageIcon } from 'lucide-react';
+import { Search, Heart, Copy, Check, X, ExternalLink, Sparkles, SlidersHorizontal, ChevronLeft, ChevronRight, LayoutGrid, Image as ImageIcon, Lock, Crown } from 'lucide-react';
 import Link from 'next/link';
 import ActressMultiSelect from '@/components/ActressMultiSelect';
 import CategoryMultiSelect from '@/components/CategoryMultiSelect';
+import { useTheme } from '@/components/ThemeContext';
 
 export default function GalleryPage() {
+  const { user } = useTheme();
+  const [collection, setCollection] = useState([]);
   const [images, setImages] = useState([]);
   const [categories, setCategories] = useState([]);
   const [actresses, setActresses] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const getCardCollectionDetails = (imgId) => {
+    const found = collection.find(c => c.image_id === imgId);
+    return {
+      owned: user?.role === 'admin' || !!found,
+      count: found ? found.count : 0
+    };
+  };
+
+  const isImgFavorite = (imgId) => {
+    if (user?.role === 'admin') {
+      const img = images.find(i => i.id === imgId);
+      return img ? img.favorite === true : false;
+    } else {
+      const uc = collection.find(c => c.image_id === imgId);
+      return uc ? uc.favorite === true : false;
+    }
+  };
 
   // Filter States
   const [searchQuery, setSearchQuery] = useState('');
@@ -57,6 +78,19 @@ export default function GalleryPage() {
       setImages(imgs);
       setCategories(cats);
       setActresses(acts);
+
+      // Fetch user collection if standard user
+      if (user && user.role === 'user') {
+        const collRes = await fetch('/api/user/collection', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user.id })
+        });
+        if (collRes.ok) {
+          const collData = await collRes.json();
+          setCollection(collData.cards || []);
+        }
+      }
     } catch (e) {
       console.error('Error fetching gallery data:', e);
     } finally {
@@ -77,20 +111,34 @@ export default function GalleryPage() {
   const handleToggleFavorite = async (id, e) => {
     if (e) e.stopPropagation();
     try {
-      const res = await fetch('/api/db/images/favorite', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id })
-      });
-      if (res.ok) {
-        const updatedImg = await res.json();
-        // Update images list locally
-        setImages(prev => prev.map(img => img.id === id ? { ...img, favorite: updatedImg.favorite } : img));
-        // If the updated image is currently selected in modal, update modal state
-        if (selectedImage && selectedImage.id === id) {
-          setSelectedImage(prev => ({ ...prev, favorite: updatedImg.favorite }));
+      if (user?.role === 'user') {
+        const res = await fetch('/api/user/favorite', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user.id, imageId: id })
+        });
+        if (res.ok) {
+          const updatedCard = await res.json();
+          // Update collection state
+          setCollection(prev => prev.map(c => c.image_id === id ? { ...c, favorite: updatedCard.favorite } : c));
+          showToast(updatedCard.favorite ? 'Added to Favorites!' : 'Removed from Favorites.', 'info');
         }
-        showToast(updatedImg.favorite ? 'Added to Favorites!' : 'Removed from Favorites.', 'info');
+      } else {
+        const res = await fetch('/api/db/images/favorite', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id })
+        });
+        if (res.ok) {
+          const updatedImg = await res.json();
+          // Update images list locally
+          setImages(prev => prev.map(img => img.id === id ? { ...img, favorite: updatedImg.favorite } : img));
+          // If the updated image is currently selected in modal, update modal state
+          if (selectedImage && selectedImage.id === id) {
+            setSelectedImage(prev => ({ ...prev, favorite: updatedImg.favorite }));
+          }
+          showToast(updatedImg.favorite ? 'Added to Favorites!' : 'Removed from Favorites.', 'info');
+        }
       }
     } catch (err) {
       console.error('Failed to toggle favorite', err);
@@ -173,7 +221,10 @@ export default function GalleryPage() {
   };
 
   // Filtered Images computation
-  const filteredImages = images.filter(img => {
+  const ownedImageIds = new Set(collection.map(c => c.image_id));
+  const visibleImages = user?.role === 'admin' ? images : images.filter(img => ownedImageIds.has(img.id));
+
+  const filteredImages = visibleImages.filter(img => {
     // 1. Search Query (match prompt text)
     const matchesSearch = img.prompt.toLowerCase().includes(searchQuery.toLowerCase());
 
@@ -184,7 +235,8 @@ export default function GalleryPage() {
     const matchesActress = selectedActresses.length === 0 || img.actresses?.some(a => selectedActresses.includes(a.id));
 
     // 4. Tab Filter (All vs Favorites)
-    const matchesTab = activeTab === 'all' || img.favorite === true;
+    const isFav = isImgFavorite(img.id);
+    const matchesTab = activeTab === 'all' || isFav;
 
     return matchesSearch && matchesCategory && matchesActress && matchesTab;
   });
@@ -329,8 +381,15 @@ export default function GalleryPage() {
             </button>
             <button
               className={`tab-btn ${activeTab === 'favorites' ? 'active' : ''}`}
-              onClick={() => setActiveTab('favorites')}
+              onClick={() => {
+                if (user?.premium === true || user?.role === 'admin') {
+                  setActiveTab('favorites');
+                } else {
+                  showToast('🔒 Favorites tab is exclusive to Premium users! Upgrade to unlock.', 'error');
+                }
+              }}
             >
+              {!(user?.premium === true || user?.role === 'admin') && <Crown size={12} className="text-yellow" style={{ marginRight: '0.25rem', display: 'inline' }} />}
               Favorites
             </button>
           </div>
@@ -346,40 +405,78 @@ export default function GalleryPage() {
         </div>
       ) : viewMode === 'gallery' ? (
         <div className="gallery-masonry">
-          {paginatedImages.map((img, idx) => (
-            <div
-              key={img.id}
-              className="gallery-masonry-item"
-              onClick={() => setLightboxIndex(idx)}
-            >
-              <img src={img.url} alt={img.prompt || "AI Graphic"} loading="lazy" />
-            </div>
-          ))}
+          {paginatedImages.map((img, idx) => {
+            const { owned, count } = getCardCollectionDetails(img.id);
+            return (
+              <div
+                key={img.id}
+                className={`gallery-masonry-item ${!owned ? 'locked-masonry-item' : ''}`}
+                onClick={() => setSelectedImage(img)}
+              >
+                <img src={img.url} alt={img.prompt || "AI Graphic"} loading="lazy" className={!owned ? 'blur-locked-img' : ''} />
+                {!owned && (
+                  <div className="locked-masonry-overlay">
+                    <Lock size={20} className="text-white" />
+                  </div>
+                )}
+                {owned && count > 1 && (
+                  <div className="masonry-count-badge">x{count}</div>
+                )}
+              </div>
+            );
+          })}
         </div>
       ) : (
         <div className="gallery-grid">
           {paginatedImages.map((img) => {
             const actressNames = img.actresses?.map(a => a.name).join(', ') || 'N/A';
+            const { owned, count } = getCardCollectionDetails(img.id);
             return (
               <div
                 key={img.id}
-                className="gallery-card"
+                className={`gallery-card ${!owned ? 'locked-card-el' : ''}`}
                 onClick={() => setSelectedImage(img)}
               >
-                <img src={img.url} alt="AI Art" className="gallery-card-img" />
-                <div className="gallery-card-overlay">
-                  <p className="gallery-card-prompt">{img.prompt}</p>
-                  <div className="gallery-card-meta">
-                    <span className="gallery-card-actress">{actressNames}</span>
-                    <button
-                      className={`gallery-card-favorite-btn ${img.favorite ? 'favorited' : ''}`}
-                      onClick={(e) => handleToggleFavorite(img.id, e)}
-                      aria-label="Favorite image"
-                    >
-                      <Heart size={20} fill={img.favorite ? '#ef4444' : 'none'} />
-                    </button>
+                <img src={img.url} alt="AI Art" className={`gallery-card-img ${!owned ? 'blur-locked-img' : ''}`} />
+                
+                {!owned ? (
+                  <div className="locked-card-overlay-el">
+                    <Lock size={24} className="text-muted" style={{ marginBottom: '0.5rem' }} />
+                    <span style={{ fontSize: '0.8rem', fontWeight: '500', color: 'var(--text-secondary)' }}>LOCKED CARD</span>
                   </div>
-                </div>
+                ) : (
+                  <>
+                    {count > 1 && <span className="card-count-badge-grid">x{count}</span>}
+                    <div className="gallery-card-overlay">
+                      <p className="gallery-card-prompt">
+                        {(user?.premium === true || user?.role === 'admin') ? img.prompt : "🔒 Prompt details locked (Premium Only)"}
+                      </p>
+                      <div className="gallery-card-meta">
+                        <span className="gallery-card-actress">{actressNames}</span>
+                        {(user?.premium === true || user?.role === 'admin') ? (
+                          <button
+                            className={`gallery-card-favorite-btn ${isImgFavorite(img.id) ? 'favorited' : ''}`}
+                            onClick={(e) => handleToggleFavorite(img.id, e)}
+                            aria-label="Favorite image"
+                          >
+                            <Heart size={20} fill={isImgFavorite(img.id) ? '#ef4444' : 'none'} />
+                          </button>
+                        ) : (
+                          <button
+                            className="gallery-card-favorite-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              showToast('🔒 Favorites are exclusive to Premium users! Upgrade to unlock.', 'error');
+                            }}
+                            aria-label="Favorite locked"
+                          >
+                            <Crown size={16} className="text-yellow" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             );
           })}
@@ -458,7 +555,13 @@ export default function GalleryPage() {
               <div className="detail-modal-grid">
                 {/* Image Showcase */}
                 <div className="detail-img-box">
-                  <img src={selectedImage.url} alt="AI Graphic Details" className="detail-img" />
+                  <img src={selectedImage.url} alt="AI Graphic Details" className={`detail-img ${!getCardCollectionDetails(selectedImage.id).owned ? 'blur-locked-detail' : ''}`} />
+                  {!getCardCollectionDetails(selectedImage.id).owned && (
+                    <div className="detail-locked-overlay">
+                      <Lock size={32} />
+                      <p style={{ marginTop: '0.5rem', fontWeight: 'bold' }}>Card Locked</p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Metadata details */}
@@ -480,52 +583,91 @@ export default function GalleryPage() {
                     </div>
 
                     {/* Details section */}
-                    <h3 style={{ marginBottom: '0.75rem', fontFamily: 'var(--font-display)' }}>Prompt Parameters</h3>
-                    <div className="prompt-viewer">
-                      <p style={{ paddingRight: '2rem', fontSize: '0.9rem', color: 'var(--text-primary)' }}>
-                        {selectedImage.prompt}
-                      </p>
-                      <button
-                        className="prompt-copy-btn"
-                        onClick={() => handleCopyPrompt(selectedImage.prompt)}
-                        title="Copy prompt parameters"
-                      >
-                        {copied ? <Check size={16} style={{ color: '#22c55e' }} /> : <Copy size={16} />}
-                      </button>
-                    </div>
+                    {!getCardCollectionDetails(selectedImage.id).owned ? (
+                      <div className="locked-prompt-warning glass-card" style={{ padding: '1rem', marginTop: '1rem', background: 'rgba(255,255,255,0.02)' }}>
+                        <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', textAlign: 'center', lineHeight: '1.4' }}>
+                          🔒 This card's prompt parameters are locked! Claim daily packs to collect this card and unlock details.
+                        </p>
+                      </div>
+                    ) : (
+                      <>
+                        <h3 style={{ marginTop: '1.25rem', marginBottom: '0.75rem', fontFamily: 'var(--font-display)' }}>Prompt Parameters</h3>
+                        {(user?.premium === true || user?.role === 'admin') ? (
+                          <div className="prompt-viewer">
+                            <p style={{ paddingRight: '2rem', fontSize: '0.9rem', color: 'var(--text-primary)' }}>
+                              {selectedImage.prompt}
+                            </p>
+                            <button
+                              className="prompt-copy-btn"
+                              onClick={() => handleCopyPrompt(selectedImage.prompt)}
+                              title="Copy prompt parameters"
+                            >
+                              {copied ? <Check size={16} style={{ color: '#22c55e' }} /> : <Copy size={16} />}
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="locked-prompt-warning glass-card" style={{ padding: '1.25rem', marginTop: '0.5rem', border: '1px solid rgba(212, 175, 55, 0.3)', background: 'linear-gradient(135deg, rgba(168,85,247,0.03), rgba(212,175,55,0.02))' }}>
+                            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', textAlign: 'center', lineHeight: '1.4', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+                              <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontWeight: 'bold', color: '#d4af37' }}>
+                                <Crown size={16} /> Premium Feature Locked
+                              </span>
+                              <span>Generation prompts are exclusive to Premium users. Upgrade to unlock!</span>
+                              <Link href="/story-mode" className="btn btn-secondary" style={{ fontSize: '0.8rem', padding: '0.4rem 1rem', marginTop: '0.5rem', background: 'linear-gradient(135deg, #d4af37, #a855f7)', border: 'none', color: '#fff' }} onClick={() => setSelectedImage(null)}>
+                                Get Premium Status
+                              </Link>
+                            </p>
+                          </div>
+                        )}
+                      </>
+                    )}
 
-                    <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '1rem 0' }}>
                       Generated on: {new Date(selectedImage.created_at).toLocaleDateString()}
                     </div>
                   </div>
 
                   {/* Actions footer inside detail panel */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '1.5rem' }}>
-                    <button
-                      className={`btn ${selectedImage.favorite ? 'btn-primary' : 'btn-secondary'}`}
-                      style={{ width: '100%', backgroundColor: selectedImage.favorite ? '#ef4444' : '' }}
-                      onClick={() => handleToggleFavorite(selectedImage.id)}
-                    >
-                      <Heart size={18} fill={selectedImage.favorite ? 'white' : 'none'} />
-                      {selectedImage.favorite ? 'Favorited' : 'Add to Favorites'}
-                    </button>
-
-                    <div style={{ display: 'flex', gap: '0.75rem', width: '100%' }}>
+                    {(user?.premium === true || user?.role === 'admin') ? (
+                      <button
+                        className={`btn ${isImgFavorite(selectedImage.id) ? 'btn-primary' : 'btn-secondary'}`}
+                        style={{ width: '100%', backgroundColor: isImgFavorite(selectedImage.id) ? '#ef4444' : '' }}
+                        onClick={() => handleToggleFavorite(selectedImage.id)}
+                      >
+                        <Heart size={18} fill={isImgFavorite(selectedImage.id) ? 'white' : 'none'} />
+                        {isImgFavorite(selectedImage.id) ? 'Favorited' : 'Add to Favorites'}
+                      </button>
+                    ) : (
                       <button
                         className="btn btn-secondary"
-                        style={{ flex: 1 }}
-                        onClick={() => handleOpenEditModal(selectedImage)}
+                        style={{ width: '100%', opacity: 0.65 }}
+                        onClick={() => {
+                          showToast('🔒 Favorites are exclusive to Premium users! Upgrade to unlock.', 'error');
+                        }}
                       >
-                        Edit Details
+                        <Crown size={18} className="text-yellow" style={{ marginRight: '0.4rem', display: 'inline', verticalAlign: 'middle' }} />
+                        Add to Favorites (Premium Only)
                       </button>
-                      <button
-                        className="btn btn-outline"
-                        style={{ flex: 1, borderColor: '#ef4444', color: '#ef4444' }}
-                        onClick={() => handleDeleteImage(selectedImage.id)}
-                      >
-                        Delete
-                      </button>
-                    </div>
+                    )}
+
+                    {user?.role === 'admin' && (
+                      <div style={{ display: 'flex', gap: '0.75rem', width: '100%' }}>
+                        <button
+                          className="btn btn-secondary"
+                          style={{ flex: 1 }}
+                          onClick={() => handleOpenEditModal(selectedImage)}
+                        >
+                          Edit Details
+                        </button>
+                        <button
+                          className="btn btn-outline"
+                          style={{ flex: 1, borderColor: '#ef4444', color: '#ef4444' }}
+                          onClick={() => handleDeleteImage(selectedImage.id)}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

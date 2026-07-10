@@ -16,8 +16,17 @@ import {
 } from 'lucide-react';
 import ActressMultiSelect from '@/components/ActressMultiSelect';
 import CategoryMultiSelect from '@/components/CategoryMultiSelect';
+import { useTheme } from '@/components/ThemeContext';
+import UserDashboard from '@/components/UserDashboard';
 
 export default function HomePage() {
+  const { user } = useTheme();
+
+  // Return User Dashboard if standard collector
+  if (user?.role === 'user') {
+    return <UserDashboard />;
+  }
+
   // Database States
   const [stats, setStats] = useState({ images: 0, actresses: 0, stories: 0, favorites: 0 });
   const [actresses, setActresses] = useState([]);

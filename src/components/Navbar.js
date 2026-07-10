@@ -3,15 +3,17 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Crown, Image as ImageIcon, Users, User, BookOpen, Sun, Moon } from 'lucide-react';
+import { Home, Crown, Image as ImageIcon, Users, User, BookOpen, Sun, Moon, LogOut } from 'lucide-react';
 import { useTheme } from './ThemeContext';
 
 export default function Navbar() {
   const pathname = usePathname();
-  const { theme, toggleTheme } = useTheme();
+  const { theme, toggleTheme, user, logout } = useTheme();
+
+  const isAdmin = user?.role === 'admin';
 
   const navItems = [
-    { name: 'Home', path: '/', icon: Home },
+    { name: isAdmin ? 'Dashboard' : 'Collection', path: '/', icon: Home },
     { name: 'Gallery', path: '/gallery', icon: ImageIcon },
     { name: 'Actresses', path: '/actresses', icon: Users },
     { name: 'Story Mode', path: '/story-mode', icon: BookOpen },
@@ -54,6 +56,10 @@ export default function Navbar() {
             {theme === 'dark' ? <Sun size={20} className="text-yellow" /> : <Moon size={20} className="text-indigo" />}
             <span className="nav-text">{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
           </button>
+          <button onClick={logout} className="theme-toggle-btn logout-btn-sidebar" style={{ marginTop: '0.5rem', color: '#f87171' }} aria-label="Sign Out">
+            <LogOut size={20} />
+            <span className="nav-text">Sign Out</span>
+          </button>
         </div>
       </aside>
 
@@ -73,13 +79,6 @@ export default function Navbar() {
             </Link>
           );
         })}
-        {/* <Link
-          href="/story-mode"
-          className={`mobile-nav-link ${pathname === '/story-mode' ? 'active' : ''}`}
-        >
-          <BookOpen size={20} />
-          <span className="mobile-nav-text">Stories</span>
-        </Link> */}
       </nav>
     </>
   );

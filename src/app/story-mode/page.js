@@ -1,16 +1,149 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { BookOpen, Sparkles, User, ImageIcon, Check, X, ChevronLeft, ChevronRight, Edit2, Trash2, Plus, UploadCloud } from 'lucide-react';
+import { BookOpen, Sparkles, User, ImageIcon, Check, X, ChevronLeft, ChevronRight, Edit2, Trash2, Plus, UploadCloud, Lock, Crown } from 'lucide-react';
 import Link from 'next/link';
 import ActressMultiSelect from '@/components/ActressMultiSelect';
+import { useTheme } from '@/components/ThemeContext';
 
 export default function StoryModePage() {
+  const { user, updateUser } = useTheme();
+  const [upgrading, setUpgrading] = useState(false);
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+
+  const showToast = (message, type = 'success') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
+  };
+
+  const handleUpgradeToPremium = async () => {
+    setUpgrading(true);
+    try {
+      const res = await fetch('/api/user/premium', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id, premium: true })
+      });
+      if (!res.ok) throw new Error('Upgrade failed');
+      const updated = await res.json();
+      updateUser({ premium: true });
+      showToast('🎉 Premium Mode Activated! All features unlocked.', 'success');
+    } catch (e) {
+      showToast('Upgrade failed. Please try again.', 'error');
+    } finally {
+      setUpgrading(false);
+    }
+  };
+
+  const isPremium = user?.premium === true || user?.role === 'admin';
+
+  if (!isPremium) {
+    return (
+      <div className="fade-in premium-upgrade-container" style={{ padding: '2rem 1rem', maxWidth: '900px', margin: '0 auto', position: 'relative' }}>
+        {toast.show && (
+          <div className={`toast toast-${toast.type} fade-in`} style={{ zIndex: 10000 }}>
+            {toast.message}
+          </div>
+        )}
+        {/* Header */}
+        <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+          <span className="badge-rare-unlock" style={{ fontSize: '0.85rem', padding: '0.4rem 1rem', borderRadius: '30px', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
+            <Crown size={16} className="text-yellow" /> AURAMUSE PREMIUM
+          </span>
+          <br></br>
+          <h1 className="section-title" style={{ fontSize: '2.5rem', fontWeight: '900', letterSpacing: '0.02em', background: 'linear-gradient(135deg, #fff 20%, #d4af37 70%, #a855f7 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', margin: '0.5rem 0' }}>
+            Unlock the Full Creative Universe
+          </h1>
+          <p style={{ fontSize: '1.05rem', color: 'var(--text-secondary)', maxWidth: '600px', margin: '0.5rem auto 0 auto' }}>
+            Upgrade today to read actress backstories, bookmark your absolute favorites, and inspect exact generation prompts.
+          </p>
+        </div>
+
+        {/* Pricing Layout */}
+        <div className="user-dashboard-grid" style={{ gap: '2rem', marginBottom: '3rem' }}>
+          {/* Feature List Card */}
+          <div className="glass-card" style={{ padding: '2.5rem', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.35rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#fff' }}>
+              <Sparkles size={20} className="text-yellow" /> Premium Member Perks
+            </h3>
+            <ul style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: 0, listStyle: 'none' }}>
+              <li style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                <Check size={18} className="text-green" style={{ flexShrink: 0, marginTop: '0.2rem' }} />
+                <div>
+                  <strong style={{ display: 'block', color: 'var(--text-primary)' }}>Immersive Story Mode</strong>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Read all detailed chapter segments and backstory dossiers for every AI actress.</span>
+                </div>
+              </li>
+              <li style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                <Check size={18} className="text-green" style={{ flexShrink: 0, marginTop: '0.2rem' }} />
+                <div>
+                  <strong style={{ display: 'block', color: 'var(--text-primary)' }}>Prompt Engineer Details</strong>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Inspect the exact text description and style parameters used to generate any card graphic.</span>
+                </div>
+              </li>
+              <li style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                <Check size={18} className="text-green" style={{ flexShrink: 0, marginTop: '0.2rem' }} />
+                <div>
+                  <strong style={{ display: 'block', color: 'var(--text-primary)' }}>Personal Favorites Binder</strong>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Bookmark your absolute favorite graphics and filter them instantly under your private profile tab.</span>
+                </div>
+              </li>
+              <li style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                <Check size={18} className="text-green" style={{ flexShrink: 0, marginTop: '0.2rem' }} />
+                <div>
+                  <strong style={{ display: 'block', color: 'var(--text-primary)' }}>High-Resolution full-size art views</strong>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Zero image blur for card details. Fully high-definition media downloads.</span>
+                </div>
+              </li>
+            </ul>
+          </div>
+
+          {/* Pricing Selector Card */}
+          <div className="glass-card" style={{ padding: '2.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(212, 175, 55, 0.4)', background: 'linear-gradient(135deg, rgba(168,85,247,0.06), rgba(212,175,55,0.04))', boxShadow: '0 0 25px rgba(168,85,247,0.1)' }}>
+            <span style={{ fontSize: '0.7rem', fontWeight: 'bold', letterSpacing: '0.15em', textTransform: 'uppercase', background: 'rgba(212, 175, 55, 0.1)', color: '#d4af37', padding: '0.3rem 0.75rem', borderRadius: '10px', marginBottom: '1rem' }}>BEST VALUE</span>
+            <h4 style={{ fontSize: '1.25rem', fontWeight: 'bold', margin: '0 0 0.5rem 0', color: '#fff' }}>Lifetime Access</h4>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.25rem', margin: '1rem 0' }}>
+              <span style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--text-muted)', textDecoration: 'line-through' }}>$29.99</span>
+              <span style={{ fontSize: '3rem', fontWeight: '900', color: '#fff' }}>$19.99</span>
+              <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>one-time</span>
+            </div>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', textAlign: 'center', marginBottom: '2rem' }}>
+              Pay once and own premium status forever. All future story acts and content expansions included!
+            </p>
+
+            <button
+              onClick={handleUpgradeToPremium}
+              disabled={upgrading}
+              className={`btn btn-primary`}
+              style={{ width: '100%', padding: '1rem', background: 'linear-gradient(135deg, #d4af37, #a855f7)', border: 'none', color: '#fff', fontSize: '1.05rem', fontWeight: 'bold', boxShadow: '0 8px 24px rgba(168, 85, 247, 0.3)', borderRadius: '8px', cursor: 'pointer' }}
+            >
+              {upgrading ? 'Unlocking Perks...' : 'Upgrade to Premium'}
+            </button>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '1rem' }}>Secure Checkout Powered by Stripe Sandbox</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const [collection, setCollection] = useState([]);
   const [stories, setStories] = useState([]);
   const [actresses, setActresses] = useState([]);
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedStory, setSelectedStory] = useState(null);
+
+  const isStoryUnlocked = (story) => {
+    if (user?.role === 'admin') return true;
+    if (!story.actresses || story.actresses.length === 0) return true;
+
+    // Unlocked if user owns at least one actress card in the story
+    return story.actresses.some(actress =>
+      collection.some(uc =>
+        uc.image && uc.image.actresses && uc.image.actresses.some(act => act.id === actress.id)
+      )
+    );
+  };
   const [activePage, setActivePage] = useState(0);
   const [slideshowMode, setSlideshowMode] = useState(false);
   const [imageSelectorModalOpen, setImageSelectorModalOpen] = useState(false);
@@ -29,18 +162,12 @@ export default function StoryModePage() {
   });
   const [submitting, setSubmitting] = useState(false);
 
-  // Toast & Custom Confirm Modal States
-  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+  // Custom Confirm Modal States
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
 
   // Touch Swipe States for Book Navigation
   const [touchStart, setTouchStart] = useState(0);
   const [touchEnd, setTouchEnd] = useState(0);
-
-  const showToast = (message, type = 'success') => {
-    setToast({ show: true, message, type });
-    setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
-  };
 
   const uploadImageFile = async (file, type = 'posters') => {
     const formData = new FormData();
@@ -72,6 +199,19 @@ export default function StoryModePage() {
       setStories(storyData);
       setActresses(actressData);
       setImages(imageData);
+
+      // Fetch user collection if standard user
+      if (user && user.role === 'user') {
+        const collRes = await fetch('/api/user/collection', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user.id })
+        });
+        if (collRes.ok) {
+          const collData = await collRes.json();
+          setCollection(collData.cards || []);
+        }
+      }
 
       // Keep selected story updated if it is currently open
       if (selectedStory) {
@@ -341,18 +481,27 @@ export default function StoryModePage() {
           {stories.map((story) => {
             const pageCount = story.images?.length || 0;
             const coverPoster = story.cover_poster || '/logo.png';
+            const unlocked = isStoryUnlocked(story);
+            const isAdmin = user?.role === 'admin';
 
             return (
               <div
                 key={story.id}
-                className="story-masonry-card"
-                onClick={() => handleOpenStory(story)}
+                className={`story-masonry-card ${!unlocked ? 'locked-story-card' : ''}`}
+                onClick={() => {
+                  if (unlocked) {
+                    handleOpenStory(story);
+                  } else {
+                    const actressList = story.actresses?.map(a => a.name).join(', ') || 'N/A';
+                    showToast(`🔒 Story Locked! Collect cards of ${actressList} to unlock this lore.`, 'error');
+                  }
+                }}
               >
                 {/* Story cover poster */}
                 <img
                   src={coverPoster}
                   alt={story.title}
-                  className="story-masonry-cover"
+                  className={`story-masonry-cover ${!unlocked ? 'blur-locked-img' : ''}`}
                   onError={(e) => {
                     e.target.src = '/logo.png'; // fallback if image fails
                   }}
@@ -400,30 +549,41 @@ export default function StoryModePage() {
                   <span className="page-count-mobile">{pageCount}</span>
                 </div>
 
-                {/* Hover overlay showing title, description, and actions */}
-                <div className="story-card-overlay">
-                  <div className="story-card-overlay-content">
-                    <h3 className="story-card-title">{story.title}</h3>
+                {!unlocked ? (
+                  <div className="locked-story-overlay">
+                    <Lock size={32} className="text-muted" style={{ marginBottom: '0.5rem' }} />
+                    <span style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>LOCKED STORY</span>
+                  </div>
+                ) : (
+                  /* Hover overlay showing title, description, and actions */
+                  <div className="story-card-overlay">
+                    <div className="story-card-overlay-content">
+                      <h3 className="story-card-title">{story.title}</h3>
 
-                    <p className="story-card-desc">
-                      {story.content && story.content.length > 120
-                        ? `${story.content.substring(0, 120)}...`
-                        : story.content}
-                    </p>
+                      <p className="story-card-desc">
+                        {story.content && story.content.length > 120
+                          ? `${story.content.substring(0, 120)}...`
+                          : story.content}
+                      </p>
 
-                    <div className="story-card-actions" onClick={(e) => e.stopPropagation()}>
-                      <button className="btn btn-primary btn-sm" onClick={() => handleOpenStory(story)}>
-                        Read Story
-                      </button>
-                      <button className="btn-sm-icon" onClick={() => handleOpenEditModal(story)} title="Edit Story">
-                        <Edit2 size={13} />
-                      </button>
-                      <button className="btn-sm-icon btn-danger" onClick={() => handleDeleteStory(story.id)} title="Delete Story">
-                        <Trash2 size={13} />
-                      </button>
+                      <div className="story-card-actions" onClick={(e) => e.stopPropagation()}>
+                        <button className="btn btn-primary btn-sm" onClick={() => handleOpenStory(story)}>
+                          Read Story
+                        </button>
+                        {isAdmin && (
+                          <>
+                            <button className="btn-sm-icon" onClick={() => handleOpenEditModal(story)} title="Edit Story">
+                              <Edit2 size={13} />
+                            </button>
+                            <button className="btn-sm-icon btn-danger" onClick={() => handleDeleteStory(story.id)} title="Delete Story">
+                              <Trash2 size={13} />
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
               </div>
             );
           })}
@@ -444,12 +604,7 @@ export default function StoryModePage() {
                 </h2>
               </div>
               <div className="book-actions-area">
-                {slideshowMode ? (
-                  <button className="btn btn-secondary btn-sm" onClick={() => setSlideshowMode(false)}>
-                    <BookOpen size={14} />
-                    <span>Book Mode</span>
-                  </button>
-                ) : (
+                {user?.role === 'admin' && (
                   <>
                     <button className="btn btn-secondary btn-sm" onClick={() => handleOpenEditModal(selectedStory)}>
                       Edit Story

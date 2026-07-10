@@ -121,3 +121,50 @@ CREATE POLICY "Allow Public Storage Delete"
 ON storage.objects FOR DELETE 
 TO public 
 USING (bucket_id IN ('actress', 'posters', 'ai-images'));
+
+-- =========================================================================
+-- USER SYSTEM & COLLECTIONS
+-- =========================================================================
+
+-- 8. Create app_users table
+CREATE TABLE IF NOT EXISTS app_users (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  username TEXT UNIQUE NOT NULL,
+  password TEXT NOT NULL,
+  name TEXT NOT NULL,
+  email TEXT DEFAULT '',
+  avatar TEXT DEFAULT '',
+  role TEXT DEFAULT 'user',
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Disable row level security for app_users (matching other tables for ease of local configuration)
+ALTER TABLE app_users DISABLE ROW LEVEL SECURITY;
+
+-- 9. Create user_cards table (many-to-many linking users to images they collected)
+CREATE TABLE IF NOT EXISTS user_cards (
+  user_id UUID REFERENCES app_users(id) ON DELETE CASCADE,
+  image_id UUID REFERENCES images(id) ON DELETE CASCADE,
+  count INTEGER DEFAULT 1,
+  favorite BOOLEAN DEFAULT false,
+  unlocked_at TIMESTAMPTZ DEFAULT now(),
+  PRIMARY KEY (user_id, image_id)
+);
+
+ALTER TABLE user_cards DISABLE ROW LEVEL SECURITY;
+
+-- 10. Create user_claims table (storing last claimed timestamps for daily packs)
+CREATE TABLE IF NOT EXISTS user_claims (
+  user_id UUID REFERENCES app_users(id) ON DELETE CASCADE PRIMARY KEY,
+  last_claimed_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE user_claims DISABLE ROW LEVEL SECURITY;
+
+-- 11. Seed default accounts
+INSERT INTO app_users (username, password, name, role)
+VALUES
+  ('admin', 'admin', 'System Admin', 'admin'),
+  ('user', 'user', 'Aura Collector', 'user')
+ON CONFLICT (username) DO NOTHING;
+

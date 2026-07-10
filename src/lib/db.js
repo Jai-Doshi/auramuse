@@ -37,7 +37,27 @@ function ensureLocalDb() {
         image_actresses: [],
         stories: [],
         story_actresses: [],
-        story_images: []
+        story_images: [],
+        app_users: [
+          {
+            id: 'default-admin-uuid',
+            username: 'admin',
+            password: 'admin',
+            name: 'System Admin',
+            role: 'admin',
+            created_at: new Date().toISOString()
+          },
+          {
+            id: 'default-user-uuid',
+            username: 'user',
+            password: 'user',
+            name: 'Aura Collector',
+            role: 'user',
+            created_at: new Date().toISOString()
+          }
+        ],
+        user_cards: [],
+        user_claims: []
       }, null, 2)
     );
   } else {
@@ -77,6 +97,45 @@ function ensureLocalDb() {
         });
         modified = true;
       }
+      // Migrate users
+      if (!data.app_users) {
+        data.app_users = [];
+        modified = true;
+      }
+      if (data.app_users.length === 0) {
+        data.app_users.push({
+          id: 'default-admin-uuid',
+          username: 'admin',
+          password: 'admin',
+          name: 'System Admin',
+          role: 'admin',
+          created_at: new Date().toISOString()
+        });
+        data.app_users.push({
+          id: 'default-user-uuid',
+          username: 'user',
+          password: 'user',
+          name: 'Aura Collector',
+          role: 'user',
+          created_at: new Date().toISOString()
+        });
+        modified = true;
+      }
+      if (!data.user_cards) {
+        data.user_cards = [];
+        modified = true;
+      } else {
+        data.user_cards.forEach(uc => {
+          if (uc.favorite === undefined) {
+            uc.favorite = false;
+            modified = true;
+          }
+        });
+      }
+      if (!data.user_claims) {
+        data.user_claims = [];
+        modified = true;
+      }
       if (modified) {
         fs.writeFileSync(dbFilePath, JSON.stringify(data, null, 2), 'utf8');
       }
@@ -99,7 +158,7 @@ function writeLocalDb(data) {
 
 // Generate UUID helper for local JSON
 function generateUUID() {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
     const r = (Math.random() * 16) | 0,
       v = c === 'x' ? r : (r & 0x3) | 0x8;
     return v.toString(16);
@@ -634,7 +693,7 @@ export async function updateImage(id, url, prompt, category_ids = [], actress_id
   if (isSupabaseConfigured) {
     const updateObj = { prompt };
     if (url) updateObj.url = url;
-    
+
     const { data: image, error } = await supabase
       .from('images')
       .update(updateObj)
@@ -683,7 +742,7 @@ export async function updateImage(id, url, prompt, category_ids = [], actress_id
     const db = readLocalDb();
     const index = db.images.findIndex(img => img.id === id);
     if (index === -1) throw new Error('Image not found');
-    
+
     db.images[index].prompt = prompt;
     if (url) db.images[index].url = url;
 
@@ -827,8 +886,447 @@ export async function deleteStory(id) {
     const db = readLocalDb();
     db.stories = db.stories.filter(s => s.id !== id);
     db.story_actresses = db.story_actresses.filter(sa => sa.story_id !== id);
-    db.story_images = db.story_images.filter(si => si.story_id !== id);
+    db.story_images = db.story_images.filter(si => si.image_id !== id);
     writeLocalDb(db);
     return { success: true };
+  }
+}
+
+// --- USER & COLLECTION OPERATIONS ---
+
+export async function verifyAppUser(username, password) {
+  const normUser = username.trim().toLowerCase();
+  if (isSupabaseConfigured) {
+    const { data, error } = await supabase
+      .from('app_users')
+      .select('*')
+      .eq('username', normUser)
+      .single();
+    if (error) return null;
+    if (data.password === password) {
+      const { password: _, ...userWithoutPassword } = data;
+      return userWithoutPassword;
+    }
+    return null;
+  } else {
+    const db = readLocalDb();
+    const found = db.app_users.find(u => u.username.toLowerCase() === normUser);
+    if (found && found.password === password) {
+      const { password: _, ...userWithoutPassword } = found;
+      return userWithoutPassword;
+    }
+    return null;
+  }
+}
+
+export async function createAppUser(username, password, name, email = '') {
+  const normUser = username.trim();
+  const normEmail = email.trim();
+  if (isSupabaseConfigured) {
+    const { data, error } = await supabase
+      .from('app_users')
+      .insert([{ username: normUser, password, name, email: normEmail, role: 'user' }])
+      .select()
+      .single();
+    if (error) {
+      if (error.code === '23505') {
+        throw new Error('Username already exists');
+      }
+      throw error;
+    }
+    const { password: _, ...userWithoutPassword } = data;
+    return userWithoutPassword;
+  } else {
+    const db = readLocalDb();
+    if (db.app_users.some(u => u.username.toLowerCase() === normUser.toLowerCase())) {
+      throw new Error('Username already exists');
+    }
+    const newUser = {
+      id: generateUUID(),
+      username: normUser,
+      password,
+      name,
+      avatar: '',
+      role: 'user',
+      created_at: new Date().toISOString()
+    };
+    db.app_users.push(newUser);
+    writeLocalDb(db);
+    const { password: _, ...userWithoutPassword } = newUser;
+    return userWithoutPassword;
+  }
+}
+
+export async function getUserCards(userId) {
+  if (isSupabaseConfigured) {
+    const { data, error } = await supabase
+      .from('user_cards')
+      .select('*, image:images(*)')
+      .eq('user_id', userId);
+    if (error) throw error;
+
+    // Resolve actresses and categories for each image
+    if (data && data.length > 0) {
+      const { data: imageActresses, error: iaError } = await supabase
+        .from('image_actresses')
+        .select('*, actress:actresses(*)');
+      if (iaError) throw iaError;
+
+      const { data: imageCategories, error: icError } = await supabase
+        .from('image_categories')
+        .select('*, category:categories(*)');
+      if (icError) throw icError;
+
+      return data.map(uc => {
+        if (!uc.image) return uc;
+        const actresses = imageActresses
+          .filter(ia => ia.image_id === uc.image.id)
+          .map(ia => ia.actress);
+        const categories = imageCategories
+          .filter(ic => ic.image_id === uc.image.id)
+          .map(ic => ic.category);
+        return {
+          ...uc,
+          image: {
+            ...uc.image,
+            actresses,
+            categories
+          }
+        };
+      });
+    }
+    return data;
+  } else {
+    const db = readLocalDb();
+    const userCards = db.user_cards.filter(uc => uc.user_id === userId);
+    return userCards.map(uc => {
+      const img = db.images.find(i => i.id === uc.image_id);
+      let categories = [];
+      let actresses = [];
+      if (img) {
+        categories = db.image_categories
+          .filter(ic => ic.image_id === img.id)
+          .map(ic => db.categories.find(c => c.id === ic.category_id))
+          .filter(Boolean);
+        actresses = db.image_actresses
+          .filter(ia => ia.image_id === img.id)
+          .map(ia => db.actresses.find(a => a.id === ia.actress_id))
+          .filter(Boolean);
+      }
+
+      return {
+        ...uc,
+        image: img ? { ...img, categories, actresses } : null
+      };
+    }).filter(uc => uc.image !== null);
+  }
+}
+
+export async function getUserClaims(userId) {
+  if (isSupabaseConfigured) {
+    const { data, error } = await supabase
+      .from('user_claims')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+    if (error && error.code !== 'PGRST116') throw error;
+    return data || null;
+  } else {
+    const db = readLocalDb();
+    const claim = db.user_claims.find(uc => uc.user_id === userId);
+    return claim || null;
+  }
+}
+
+export async function resetUserClaim(userId) {
+  if (isSupabaseConfigured) {
+    const { error } = await supabase
+      .from('user_claims')
+      .delete()
+      .eq('user_id', userId);
+    if (error) throw error;
+    return { success: true };
+  } else {
+    const db = readLocalDb();
+    db.user_claims = db.user_claims.filter(uc => uc.user_id !== userId);
+    writeLocalDb(db);
+    return { success: true };
+  }
+}
+
+export async function toggleUserCardFavorite(userId, imageId) {
+  if (isSupabaseConfigured) {
+    const { data: uc, error: getErr } = await supabase
+      .from('user_cards')
+      .select('favorite')
+      .eq('user_id', userId)
+      .eq('image_id', imageId)
+      .single();
+    if (getErr) throw getErr;
+
+    const nextFavorite = !uc.favorite;
+    const { data, error } = await supabase
+      .from('user_cards')
+      .update({ favorite: nextFavorite })
+      .eq('user_id', userId)
+      .eq('image_id', imageId)
+      .select('*, image:images(*)')
+      .single();
+    if (error) throw error;
+
+    // Resolve actresses for the image
+    if (data && data.image) {
+      const { data: imageActresses, error: iaError } = await supabase
+        .from('image_actresses')
+        .select('*, actress:actresses(*)')
+        .eq('image_id', imageId);
+      if (!iaError) {
+        data.image.actresses = imageActresses.map(ia => ia.actress);
+      }
+    }
+    return data;
+  } else {
+    const db = readLocalDb();
+    const index = db.user_cards.findIndex(uc => uc.user_id === userId && uc.image_id === imageId);
+    if (index === -1) throw new Error('User card not found');
+    db.user_cards[index].favorite = !db.user_cards[index].favorite;
+    writeLocalDb(db);
+
+    const uc = db.user_cards[index];
+    const img = db.images.find(i => i.id === uc.image_id);
+    let actresses = [];
+    if (img) {
+      actresses = db.image_actresses
+        .filter(ia => ia.image_id === img.id)
+        .map(ia => db.actresses.find(a => a.id === ia.actress_id))
+        .filter(Boolean);
+    }
+    return {
+      ...uc,
+      image: img ? { ...img, actresses } : null
+    };
+  }
+}
+
+export async function claimDailyPack(userId) {
+  const claim = await getUserClaims(userId);
+  const now = new Date();
+
+  if (claim) {
+    const lastClaimed = new Date(claim.last_claimed_at);
+    const isSameDay = lastClaimed.getFullYear() === now.getFullYear() &&
+      lastClaimed.getMonth() === now.getMonth() &&
+      lastClaimed.getDate() === now.getDate();
+    if (isSameDay) {
+      throw new Error('You have already claimed your daily pack today!');
+    }
+  }
+
+  // 1. Get all images
+  const allImages = await getImages();
+  if (allImages.length === 0) {
+    throw new Error('No cards are available yet. Ask Admin to upload images first.');
+  }
+
+  // 2. Query and filter out cards that are in story mode
+  const storyImageIds = new Set();
+  if (isSupabaseConfigured) {
+    const { data: storyImages, error: siErr } = await supabase
+      .from('story_images')
+      .select('image_id');
+    if (!siErr && storyImages) {
+      storyImages.forEach(si => storyImageIds.add(si.image_id));
+    }
+  } else {
+    const db = readLocalDb();
+    if (db.story_images) {
+      db.story_images.forEach(si => storyImageIds.add(si.image_id));
+    }
+  }
+
+  // Claimable pool: exclude images used in stories
+  const claimableImages = allImages.filter(img => !storyImageIds.has(img.id));
+  if (claimableImages.length === 0) {
+    throw new Error('No claimable cards are available (all images are locked in story mode).');
+  }
+
+  // 3. Separate pool into Common (not admin favorite) and Rare (admin favorite)
+  const rarePool = claimableImages.filter(img => img.favorite === true);
+  const commonPool = claimableImages.filter(img => img.favorite !== true);
+
+  // 4. Draw 5 random cards with replacement (up to luck)
+  // RARE cards have a 10% chance to be pulled if they exist
+  const selectedCards = [];
+  for (let i = 0; i < 5; i++) {
+    const roll = Math.random();
+    let isRare = false;
+    let card = null;
+
+    if (roll < 0.10 && rarePool.length > 0) {
+      const randIndex = Math.floor(Math.random() * rarePool.length);
+      card = rarePool[randIndex];
+      isRare = true;
+    } else {
+      const pool = commonPool.length > 0 ? commonPool : claimableImages;
+      const randIndex = Math.floor(Math.random() * pool.length);
+      card = pool[randIndex];
+    }
+
+    selectedCards.push({ card, isRare });
+  }
+
+  // 5. Gather current user collection to see which actress unlocks are new
+  const currentCards = await getUserCards(userId);
+  const ownedActressIds = new Set();
+  currentCards.forEach(uc => {
+    if (uc.image && uc.image.actresses) {
+      uc.image.actresses.forEach(act => ownedActressIds.add(act.id));
+    }
+  });
+
+  const results = [];
+  const actressesNewlyUnlockedThisPull = new Set();
+
+  for (const item of selectedCards) {
+    const card = item.card;
+    const isRare = item.isRare;
+    let count = 1;
+    let newlyUnlockedActresses = [];
+
+    if (card.actresses && card.actresses.length > 0) {
+      card.actresses.forEach(act => {
+        if (!ownedActressIds.has(act.id) && !actressesNewlyUnlockedThisPull.has(act.id)) {
+          newlyUnlockedActresses.push(act);
+          actressesNewlyUnlockedThisPull.add(act.id);
+        }
+      });
+    }
+
+    const isNewActressUnlocked = newlyUnlockedActresses.length > 0;
+
+    // Save to user collection (user_cards)
+    if (isSupabaseConfigured) {
+      const { data: existing, error: fetchErr } = await supabase
+        .from('user_cards')
+        .select('count')
+        .eq('user_id', userId)
+        .eq('image_id', card.id)
+        .maybeSingle();
+
+      if (existing) {
+        count = existing.count + 1;
+        const { error: updErr } = await supabase
+          .from('user_cards')
+          .update({ count })
+          .eq('user_id', userId)
+          .eq('image_id', card.id);
+        if (updErr) throw updErr;
+      } else {
+        const { error: insErr } = await supabase
+          .from('user_cards')
+          .insert([{ user_id: userId, image_id: card.id, count: 1, favorite: false }]);
+        if (insErr) throw insErr;
+      }
+    } else {
+      const db = readLocalDb();
+      if (!db.user_cards) db.user_cards = [];
+      const found = db.user_cards.find(uc => uc.user_id === userId && uc.image_id === card.id);
+      if (found) {
+        found.count += 1;
+        count = found.count;
+      } else {
+        db.user_cards.push({
+          user_id: userId,
+          image_id: card.id,
+          count: 1,
+          favorite: false,
+          unlocked_at: new Date().toISOString()
+        });
+      }
+      writeLocalDb(db);
+    }
+
+    results.push({
+      ...card,
+      count,
+      isRare,
+      isNewActressUnlocked,
+      newlyUnlockedActresses
+    });
+  }
+
+  // Update user claim timestamp
+  if (isSupabaseConfigured) {
+    if (claim) {
+      const { error } = await supabase
+        .from('user_claims')
+        .update({ last_claimed_at: now.toISOString() })
+        .eq('user_id', userId);
+      if (error) throw error;
+    } else {
+      const { error } = await supabase
+        .from('user_claims')
+        .insert([{ user_id: userId, last_claimed_at: now.toISOString() }]);
+      if (error) throw error;
+    }
+  } else {
+    const db = readLocalDb();
+    if (!db.user_claims) db.user_claims = [];
+    const foundIndex = db.user_claims.findIndex(uc => uc.user_id === userId);
+    if (foundIndex !== -1) {
+      db.user_claims[foundIndex].last_claimed_at = now.toISOString();
+    } else {
+      db.user_claims.push({
+        user_id: userId,
+        last_claimed_at: now.toISOString()
+      });
+    }
+    writeLocalDb(db);
+  }
+
+  return results;
+}
+
+export async function setUserPremiumStatus(userId, isPremium) {
+  if (isSupabaseConfigured) {
+    const { data, error } = await supabase
+      .from('app_users')
+      .update({ premium: isPremium })
+      .eq('id', userId)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  } else {
+    const db = readLocalDb();
+    const index = db.app_users.findIndex(u => u.id === userId);
+    if (index === -1) throw new Error('User not found');
+    db.app_users[index].premium = isPremium;
+    writeLocalDb(db);
+    return db.app_users[index];
+  }
+}
+
+export async function getAdminStats() {
+  if (isSupabaseConfigured) {
+    const { count: usersCount } = await supabase.from('app_users').select('*', { count: 'exact', head: true });
+    const { count: premiumCount } = await supabase.from('app_users').select('*', { count: 'exact', head: true }).eq('premium', true);
+    const { count: imagesCount } = await supabase.from('app_images').select('*', { count: 'exact', head: true });
+    const { count: actressesCount } = await supabase.from('app_actresses').select('*', { count: 'exact', head: true });
+    return {
+      totalUsers: usersCount || 0,
+      premiumUsers: premiumCount || 0,
+      totalImages: imagesCount || 0,
+      totalActresses: actressesCount || 0
+    };
+  } else {
+    const db = readLocalDb();
+    const premiumCount = db.app_users.filter(u => u.premium === true).length;
+    return {
+      totalUsers: db.app_users.length,
+      premiumUsers: premiumCount,
+      totalImages: db.app_images?.length || 0,
+      totalActresses: db.app_actresses?.length || 0
+    };
   }
 }

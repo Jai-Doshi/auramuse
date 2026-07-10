@@ -6,14 +6,7 @@ const ThemeContext = createContext();
 
 export function ThemeProvider({ children }) {
   const [theme, setTheme] = useState('dark');
-  const [user, setUser] = useState({
-    name: 'Aura Explorer',
-    email: 'creator@auramuse.ai',
-    phone: '+1 (555) 019-2831',
-    avatar: '',
-    hideProfile: false,
-    rememberMe: true
-  });
+  const [user, setUser] = useState(null);
   const [showSplash, setShowSplash] = useState(true);
 
   // Initialize values from localStorage on mount
@@ -61,7 +54,7 @@ export function ThemeProvider({ children }) {
   // Update user profile and handle Remember Me persistence
   const updateUser = (newDetails) => {
     setUser(prev => {
-      const updated = { ...prev, ...newDetails };
+      const updated = prev ? { ...prev, ...newDetails } : { ...newDetails };
       if (updated.rememberMe) {
         localStorage.setItem('auramuse-user', JSON.stringify(updated));
       } else {
@@ -69,6 +62,11 @@ export function ThemeProvider({ children }) {
       }
       return updated;
     });
+  };
+
+  const logout = () => {
+    setUser(null);
+    localStorage.removeItem('auramuse-user');
   };
 
   // Register PWA service worker
@@ -87,7 +85,9 @@ export function ThemeProvider({ children }) {
       theme,
       toggleTheme,
       user,
+      setUser,
       updateUser,
+      logout,
       showSplash,
       setShowSplash
     }}>

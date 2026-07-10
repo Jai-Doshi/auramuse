@@ -1,13 +1,23 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { BookOpen, ImageIcon, Heart, Copy, Check, X, ArrowLeft, Sparkles, UploadCloud } from 'lucide-react';
+import { BookOpen, ImageIcon, Heart, Copy, Check, X, ArrowLeft, Sparkles, UploadCloud, Lock } from 'lucide-react';
+import { useTheme } from '@/components/ThemeContext';
 
 export default function ActressesPage() {
+  const { user } = useTheme();
+  const [collection, setCollection] = useState([]);
   const [actresses, setActresses] = useState([]);
   const [images, setImages] = useState([]);
   const [stories, setStories] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const isActressUnlocked = (actressId) => {
+    if (user?.role === 'admin') return true;
+    return collection.some(uc => 
+      uc.image && uc.image.actresses && uc.image.actresses.some(act => act.id === actressId)
+    );
+  };
 
   // Active View States
   const [selectedActress, setSelectedActress] = useState(null); // Actress object if detail view active
@@ -41,6 +51,19 @@ export default function ActressesPage() {
       setActresses(acts);
       setImages(imgs);
       setStories(stors);
+
+      // Fetch user collection if standard user
+      if (user && user.role === 'user') {
+        const collRes = await fetch('/api/user/collection', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user.id })
+        });
+        if (collRes.ok) {
+          const collData = await collRes.json();
+          setCollection(collData.cards || []);
+        }
+      }
 
       // If an actress was already selected, update her state to reflect any new counts/images
       if (selectedActress) {
@@ -243,61 +266,77 @@ export default function ActressesPage() {
                 const sortedByImages = [...actresses].sort((a, b) => (b.raw_image_count || 0) - (a.raw_image_count || 0));
                 return actresses.map((actress) => {
                   const rank = sortedByImages.findIndex(a => a.id === actress.id) + 1;
+                  const unlocked = isActressUnlocked(actress.id);
                   return (
                     <div
                       key={actress.id}
-                      className="actress-card"
-                      onClick={() => setSelectedActress(actress)}
+                      className={`actress-card ${!unlocked ? 'locked-actress-el' : ''}`}
+                      onClick={() => {
+                        if (unlocked) {
+                          setSelectedActress(actress);
+                        } else {
+                          showToast('🔒 This actress is locked! Open daily packs to collect her cards.', 'error');
+                        }
+                      }}
                     >
                       {/* Card Image Background (Full Bleed) */}
                       <img
                         src={actress.profile_picture || '/logo.png'}
                         alt={actress.name}
-                        className="playing-card-bg-img"
+                        className={`playing-card-bg-img ${!unlocked ? 'blur-locked-img' : ''}`}
                       />
                       {/* Card Shadow Gradient Overlay */}
                       <div className="playing-card-overlay"></div>
 
-                      {/* Top-Left Circular Gem (Power Level / Priority Rank) */}
-                      <div className="playing-card-gem-left">
-                        <span>{rank}</span>
-                      </div>
+                      {!unlocked ? (
+                        <div className="locked-actress-overlay-el">
+                          <Lock size={32} className="text-muted" style={{ marginBottom: '0.75rem' }} />
+                          <span style={{ fontSize: '0.9rem', fontWeight: 'bold', letterSpacing: '0.05em' }}>LOCKED MUSE</span>
+                        </div>
+                      ) : (
+                        <>
+                          {/* Top-Left Circular Gem (Power Level / Priority Rank) */}
+                          <div className="playing-card-gem-left">
+                            <span>{rank}</span>
+                          </div>
 
-                  {/* Top-Right Faction Crest (Muse Icon) */}
-                  <div className="playing-card-crest-right">
-                    <Sparkles size={14} />
-                  </div>
+                          {/* Top-Right Faction Crest (Muse Icon) */}
+                          <div className="playing-card-crest-right">
+                            <Sparkles size={14} />
+                          </div>
 
-                  {/* Card Core Content (Middle to Bottom) */}
-                  <div className="playing-card-content">
-                    <h3 className="playing-card-name">{actress.name}</h3>
+                          {/* Card Core Content (Middle to Bottom) */}
+                          <div className="playing-card-content">
+                            <h3 className="playing-card-name">{actress.name}</h3>
 
-                    {/* Tiny dividing line */}
-                    <div className="playing-card-divider">
-                      <span className="playing-card-subtitle">AI MUSE</span>
+                            {/* Tiny dividing line */}
+                            <div className="playing-card-divider">
+                              <span className="playing-card-subtitle">AI MUSE</span>
+                            </div>
+
+                            <p className="playing-card-bio">
+                              {actress.bio || 'No biographical dossier available.'}
+                            </p>
+                          </div>
+
+                          {/* Bottom Stats Crests */}
+                          <div className="playing-card-footer">
+                            {/* Bottom Left: Power (Graphics) */}
+                            <div className="playing-card-stat-badge stat-badge-gold" title="Graphics count">
+                              <span>{actress.raw_image_count}</span>
+                            </div>
+
+                            {/* Bottom Center Decorative Gem */}
+                            <div className="playing-card-center-gem"></div>
+
+                            {/* Bottom Right: Health (Stories/Lore) */}
+                            <div className="playing-card-stat-badge stat-badge-red" title="Stories count">
+                              <span>{actress.raw_story_count}</span>
+                            </div>
+                          </div>
+                        </>
+                      )}
                     </div>
-
-                    <p className="playing-card-bio">
-                      {actress.bio || 'No biographical dossier available.'}
-                    </p>
-                  </div>
-
-                  {/* Bottom Stats Crests */}
-                  <div className="playing-card-footer">
-                    {/* Bottom Left: Power (Graphics) */}
-                    <div className="playing-card-stat-badge stat-badge-gold" title="Graphics count">
-                      <span>{actress.raw_image_count}</span>
-                    </div>
-
-                    {/* Bottom Center Decorative Gem */}
-                    <div className="playing-card-center-gem"></div>
-
-                    {/* Bottom Right: Health (Stories/Lore) */}
-                    <div className="playing-card-stat-badge stat-badge-red" title="Stories count">
-                      <span>{actress.raw_story_count}</span>
-                    </div>
-                  </div>
-                </div>
                   );
                 });
               })()}
@@ -336,14 +375,16 @@ export default function ActressesPage() {
                     </div>
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: '0.75rem' }}>
-                  <button className="btn btn-secondary" onClick={() => handleOpenEditModal(selectedActress)}>
-                    Edit Profile
-                  </button>
-                  <button className="btn btn-outline" style={{ borderColor: '#ef4444', color: '#ef4444' }} onClick={() => handleDeleteActress(selectedActress.id)}>
-                    Delete dossier
-                  </button>
-                </div>
+                {user?.role === 'admin' && (
+                  <div style={{ display: 'flex', gap: '0.75rem' }}>
+                    <button className="btn btn-secondary" onClick={() => handleOpenEditModal(selectedActress)}>
+                      Edit Profile
+                    </button>
+                    <button className="btn btn-outline" style={{ borderColor: '#ef4444', color: '#ef4444' }} onClick={() => handleDeleteActress(selectedActress.id)}>
+                      Delete dossier
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 

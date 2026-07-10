@@ -1,7 +1,7 @@
 import './globals.css';
 import { ThemeProvider } from '@/components/ThemeContext';
 import SplashScreen from '@/components/SplashScreen';
-import Navbar from '@/components/Navbar';
+import AppLayout from '@/components/AppLayout';
 
 export const viewport = {
   width: 'device-width',
@@ -28,12 +28,9 @@ export default function RootLayout({ children }) {
       <body>
         <ThemeProvider>
           <SplashScreen />
-          <div className="app-container">
-            <Navbar />
-            <main className="main-content">
-              {children}
-            </main>
-          </div>
+          <AppLayout>
+            {children}
+          </AppLayout>
         </ThemeProvider>
       </body>
     </html>
