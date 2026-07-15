@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { BookOpen, ImageIcon, Heart, Copy, Check, X, ArrowLeft, Sparkles, UploadCloud, Lock } from 'lucide-react';
+import { BookOpen, ImageIcon, Heart, Copy, Check, X, ArrowLeft, Sparkles, UploadCloud, Lock, Award } from 'lucide-react';
 import { useTheme } from '@/components/ThemeContext';
 
 export default function ActressesPage() {
@@ -17,6 +17,16 @@ export default function ActressesPage() {
     return collection.some(uc => 
       uc.image && uc.image.actresses && uc.image.actresses.some(act => act.id === actressId)
     );
+  };
+
+  const isImgFavorite = (imgId) => {
+    if (user?.role === 'admin') {
+      const img = images.find(i => i.id === imgId);
+      return img ? img.favorite === true : false;
+    } else {
+      const uc = collection.find(c => c.image_id === imgId);
+      return uc ? uc.favorite === true : false;
+    }
   };
 
   // Active View States
@@ -84,20 +94,34 @@ export default function ActressesPage() {
   // Handle Favorites toggle for image modal
   const handleToggleFavorite = async (id) => {
     try {
-      const res = await fetch('/api/db/images/favorite', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id })
-      });
-      if (res.ok) {
-        const updatedImg = await res.json();
-        // Update images state
-        setImages(prev => prev.map(img => img.id === id ? { ...img, favorite: updatedImg.favorite } : img));
-        // Update selected image in modal
-        if (selectedImage && selectedImage.id === id) {
-          setSelectedImage(prev => ({ ...prev, favorite: updatedImg.favorite }));
+      if (user?.role === 'user') {
+        const res = await fetch('/api/user/favorite', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user.id, imageId: id })
+        });
+        if (res.ok) {
+          const updatedCard = await res.json();
+          // Update collection state
+          setCollection(prev => prev.map(c => c.image_id === id ? { ...c, favorite: updatedCard.favorite } : c));
+          showToast(updatedCard.favorite ? 'Added to Favorites!' : 'Removed from Favorites.', 'info');
         }
-        showToast(updatedImg.favorite ? 'Added to Favorites!' : 'Removed from Favorites.', 'info');
+      } else {
+        const res = await fetch('/api/db/images/favorite', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id })
+        });
+        if (res.ok) {
+          const updatedImg = await res.json();
+          // Update images state
+          setImages(prev => prev.map(img => img.id === id ? { ...img, favorite: updatedImg.favorite } : img));
+          // Update selected image in modal
+          if (selectedImage && selectedImage.id === id) {
+            setSelectedImage(prev => ({ ...prev, favorite: updatedImg.favorite }));
+          }
+          showToast(updatedImg.favorite ? 'Added to Favorites!' : 'Removed from Favorites.', 'info');
+        }
       }
     } catch (err) {
       console.error('Failed to toggle favorite', err);
@@ -430,18 +454,23 @@ export default function ActressesPage() {
                       onClick={() => setSelectedImage(img)}
                     >
                       <img src={img.url} alt="AI Art" className="gallery-card-img" />
+                      {user?.role !== 'admin' && img.favorite && (
+                        <span className="badge-rare-unlock" style={{ top: '12px', left: '12px', scale: '0.85', transformOrigin: 'top left', position: 'absolute', zIndex: 10 }}>
+                          <Award size={12} /> RARE ART
+                        </span>
+                      )}
                       <div className="gallery-card-overlay">
                         <p className="gallery-card-prompt">{img.prompt}</p>
                         <div className="gallery-card-meta">
                           <span className="gallery-card-actress">{actressNames}</span>
                           <button
-                            className={`gallery-card-favorite-btn ${img.favorite ? 'favorited' : ''}`}
+                            className={`gallery-card-favorite-btn ${isImgFavorite(img.id) ? 'favorited' : ''}`}
                             onClick={(e) => {
                               e.stopPropagation();
                               handleToggleFavorite(img.id);
                             }}
                           >
-                            <Heart size={20} fill={img.favorite ? '#ef4444' : 'none'} />
+                            <Heart size={20} fill={isImgFavorite(img.id) ? '#ef4444' : 'none'} />
                           </button>
                         </div>
                       </div>
@@ -502,12 +531,12 @@ export default function ActressesPage() {
 
                   <div style={{ display: 'flex', gap: '0.75rem', marginTop: '2rem' }}>
                     <button
-                      className={`btn ${selectedImage.favorite ? 'btn-primary' : 'btn-secondary'}`}
-                      style={{ flex: 1, backgroundColor: selectedImage.favorite ? '#ef4444' : '' }}
+                      className={`btn ${isImgFavorite(selectedImage.id) ? 'btn-primary' : 'btn-secondary'}`}
+                      style={{ flex: 1, backgroundColor: isImgFavorite(selectedImage.id) ? '#ef4444' : '' }}
                       onClick={() => handleToggleFavorite(selectedImage.id)}
                     >
-                      <Heart size={18} fill={selectedImage.favorite ? 'white' : 'none'} />
-                      {selectedImage.favorite ? 'Favorited' : 'Add to Favorites'}
+                      <Heart size={18} fill={isImgFavorite(selectedImage.id) ? 'white' : 'none'} />
+                      {isImgFavorite(selectedImage.id) ? 'Favorited' : 'Add to Favorites'}
                     </button>
                   </div>
                 </div>

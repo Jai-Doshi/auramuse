@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Search, Heart, Copy, Check, X, ExternalLink, Sparkles, SlidersHorizontal, ChevronLeft, ChevronRight, LayoutGrid, Image as ImageIcon, Lock, Crown } from 'lucide-react';
+import { Search, Heart, Copy, Check, X, ExternalLink, Sparkles, SlidersHorizontal, ChevronLeft, ChevronRight, LayoutGrid, Image as ImageIcon, Lock, Crown, Award } from 'lucide-react';
 import Link from 'next/link';
 import ActressMultiSelect from '@/components/ActressMultiSelect';
 import CategoryMultiSelect from '@/components/CategoryMultiSelect';
@@ -426,16 +426,21 @@ export default function GalleryPage() {
                 onClick={() => setSelectedImage(img)}
               >
                 <img src={img.url} alt="AI Art" className="gallery-card-img" />
+                {user?.role !== 'admin' && img.favorite && (
+                  <span className="badge-rare-unlock" style={{ top: '12px', left: '12px', scale: '0.85', transformOrigin: 'top left', position: 'absolute', zIndex: 10 }}>
+                    <Award size={12} /> RARE ART
+                  </span>
+                )}
                 <div className="gallery-card-overlay">
                   <p className="gallery-card-prompt">{img.prompt}</p>
                   <div className="gallery-card-meta">
                     <span className="gallery-card-actress">{actressNames}</span>
                     <button
-                      className={`gallery-card-favorite-btn ${img.favorite ? 'favorited' : ''}`}
+                      className={`gallery-card-favorite-btn ${isImgFavorite(img.id) ? 'favorited' : ''}`}
                       onClick={(e) => handleToggleFavorite(img.id, e)}
                       aria-label="Favorite image"
                     >
-                      <Heart size={20} fill={img.favorite ? '#ef4444' : 'none'} />
+                      <Heart size={20} fill={isImgFavorite(img.id) ? '#ef4444' : 'none'} />
                     </button>
                   </div>
                 </div>

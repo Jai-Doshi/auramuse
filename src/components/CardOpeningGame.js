@@ -6,6 +6,7 @@ import { Sparkles, Award, ChevronRight } from 'lucide-react';
 export default function CardOpeningGame({ cards, onClose }) {
   const [revealed, setRevealed] = useState({});
   const [unlockedActresses, setUnlockedActresses] = useState([]);
+  const [unlockedCard, setUnlockedCard] = useState(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [showSummary, setShowSummary] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -20,17 +21,38 @@ export default function CardOpeningGame({ cards, onClose }) {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  useEffect(() => {
+    console.log("CardOpeningGame loaded with cards:", cards);
+  }, [cards]);
+
   const handleCardClick = (index) => {
     if (revealed[index]) return;
 
     setRevealed(prev => ({ ...prev, [index]: true }));
 
     const card = cards[index];
-    // Show unlock modal if any actresses associated are newly unlocked
-    if (card.isNewActressUnlocked && card.newlyUnlockedActresses && card.newlyUnlockedActresses.length > 0) {
+    console.log(`Card clicked index ${index}: count = ${card.count}, typeof count = ${typeof card.count}`);
+    const isNewCard = card.count == 1;
+    const isRare = card.isRare;
+
+    if (isNewCard || isRare) {
+      setTimeout(() => {
+        setUnlockedCard(card);
+      }, 800); // Wait for card flip animation to finish
+    } else if (card.isNewActressUnlocked && card.newlyUnlockedActresses && card.newlyUnlockedActresses.length > 0) {
       setTimeout(() => {
         setUnlockedActresses(card.newlyUnlockedActresses);
       }, 800); // Wait for card flip animation to finish
+    }
+  };
+
+  const handleContinueCardUnlock = () => {
+    const card = unlockedCard;
+    setUnlockedCard(null);
+    if (card && card.isNewActressUnlocked && card.newlyUnlockedActresses && card.newlyUnlockedActresses.length > 0) {
+      setTimeout(() => {
+        setUnlockedActresses(card.newlyUnlockedActresses);
+      }, 300);
     }
   };
 
@@ -113,7 +135,7 @@ export default function CardOpeningGame({ cards, onClose }) {
                         card.isRare ? (
                           <div className="card-backlight-rare"></div>
                         ) : (
-                          card.isNewActressUnlocked && <div className="card-backlight"></div>
+                          (card.isNewActressUnlocked || card.count == 1) && <div className="card-backlight"></div>
                         )
                       )}
 
@@ -130,6 +152,12 @@ export default function CardOpeningGame({ cards, onClose }) {
                         {card.isNewActressUnlocked && !card.isRare && (
                           <span className="badge-new-unlock">
                             <Sparkles size={12} /> NEW UNLOCK
+                          </span>
+                        )}
+
+                        {card.count == 1 && (
+                          <span className="badge-new-card" style={card.isRare || card.isNewActressUnlocked ? { left: 'auto', right: '12px' } : {}}>
+                            <Sparkles size={12} /> NEW CARD
                           </span>
                         )}
 
@@ -175,11 +203,11 @@ export default function CardOpeningGame({ cards, onClose }) {
                     style={{ cursor: 'default' }}
                   >
                     <div className="card-3d-inner">
-                      <div className={`card-3d-side card-3d-back ${card.isRare ? 'rare-card-border' : ''}`}>
+                       <div className={`card-3d-side card-3d-back ${card.isRare ? 'rare-card-border' : ''}`}>
                         {card.isRare ? (
                           <div className="card-backlight-rare"></div>
                         ) : (
-                          card.isNewActressUnlocked && <div className="card-backlight"></div>
+                          (card.isNewActressUnlocked || card.count == 1) && <div className="card-backlight"></div>
                         )}
 
                         <div className="card-face">
@@ -195,6 +223,12 @@ export default function CardOpeningGame({ cards, onClose }) {
                           {card.isNewActressUnlocked && !card.isRare && (
                             <span className="badge-new-unlock">
                               <Sparkles size={12} /> NEW UNLOCK
+                            </span>
+                          )}
+
+                          {card.count == 1 && (
+                            <span className="badge-new-card" style={card.isRare || card.isNewActressUnlocked ? { left: 'auto', right: '12px' } : {}}>
+                              <Sparkles size={12} /> NEW CARD
                             </span>
                           )}
 
@@ -263,7 +297,7 @@ export default function CardOpeningGame({ cards, onClose }) {
                         card.isRare ? (
                           <div className="card-backlight-rare"></div>
                         ) : (
-                          card.isNewActressUnlocked && <div className="card-backlight"></div>
+                          (card.isNewActressUnlocked || card.count == 1) && <div className="card-backlight"></div>
                         )
                       )}
 
@@ -280,6 +314,12 @@ export default function CardOpeningGame({ cards, onClose }) {
                         {card.isNewActressUnlocked && !card.isRare && (
                           <span className="badge-new-unlock">
                             <Sparkles size={12} /> NEW UNLOCK
+                          </span>
+                        )}
+
+                        {card.count == 1 && (
+                          <span className="badge-new-card" style={card.isRare || card.isNewActressUnlocked ? { left: 'auto', right: '12px' } : {}}>
+                            <Sparkles size={12} /> NEW CARD
                           </span>
                         )}
 
@@ -308,6 +348,79 @@ export default function CardOpeningGame({ cards, onClose }) {
             )}
           </div>
         </>
+      )}
+
+      {/* NEW CARD/RARE ART UNLOCKED POPUP */}
+      {unlockedCard && (
+        <div className="game-modal-overlay" onClick={handleContinueCardUnlock}>
+          <div className="glass-card unlock-modal fade-in-up" style={{ maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+            <div className="unlock-badge-container">
+              {unlockedCard.isRare ? (
+                <Award className="unlock-award-icon text-yellow" size={48} />
+              ) : (
+                <Sparkles className="unlock-award-icon text-yellow" size={48} />
+              )}
+            </div>
+
+            <h3 className="unlock-modal-title">
+              {unlockedCard.isRare ? 'Rare Art Unlocked!' : 'New Card Unlocked!'}
+            </h3>
+
+            <div className="unlock-card-display" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+              <div className={`card-3d-wrapper flipped ${unlockedCard.isRare ? 'rare-card-border' : ''}`} style={{ transform: 'scale(1.05)', cursor: 'default', pointerEvents: 'none' }}>
+                <div className="card-3d-inner">
+                  <div className="card-3d-side card-3d-back">
+                    {unlockedCard.isRare ? (
+                      <div className="card-backlight-rare"></div>
+                    ) : (
+                      <div className="card-backlight"></div>
+                    )}
+                    <div className="card-face">
+                      <img src={unlockedCard.url} alt="Actress Card" className="card-face-img" />
+                      <div className="card-face-overlay"></div>
+                      {unlockedCard.isRare && (
+                        <span className="badge-rare-unlock">
+                          <Award size={12} /> RARE ART
+                        </span>
+                      )}
+                      {!unlockedCard.isRare && unlockedCard.isNewActressUnlocked && (
+                        <span className="badge-new-unlock">
+                          <Sparkles size={12} /> NEW UNLOCK
+                        </span>
+                      )}
+                      {unlockedCard.count == 1 && (
+                        <span className="badge-new-card" style={unlockedCard.isRare || unlockedCard.isNewActressUnlocked ? { left: 'auto', right: '12px' } : {}}>
+                          <Sparkles size={12} /> NEW CARD
+                        </span>
+                      )}
+                      <div className="card-face-details">
+                        <h4 className="card-actress-name">
+                          {unlockedCard.actresses && unlockedCard.actresses.length > 0 
+                            ? unlockedCard.actresses.map(a => a.name).join(', ') 
+                            : 'Unknown'}
+                        </h4>
+                        <p className="card-prompt-snippet">"{unlockedCard.prompt ? unlockedCard.prompt.slice(0, 55) : ''}..."</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', textAlign: 'center', maxWidth: '300px', margin: '0.5rem 0 0 0' }}>
+                {unlockedCard.isRare 
+                  ? 'A gorgeous piece of rare art has been added to your collection!' 
+                  : 'A brand new unique card has been added to your binder!'}
+              </p>
+            </div>
+
+            <button
+              onClick={handleContinueCardUnlock}
+              className="btn btn-primary"
+              style={{ width: '100%', cursor: 'pointer' }}
+            >
+              Continue
+            </button>
+          </div>
+        </div>
       )}
 
       {/* NEW ACTRESS UNLOCKED POPUP */}

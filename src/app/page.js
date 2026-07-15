@@ -481,8 +481,11 @@ export default function HomePage() {
                     <span className="badge badge-purple" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
                       <Sparkles size={12} /> Prompt of the Day
                     </span>
+                  </div>
+
+                  <div className="daily-prompt-categories">
                     {dailyPromptImage.categories && dailyPromptImage.categories.map(cat => (
-                      <span key={cat.id} className="badge badge-blue" style={{ marginRight: '0.25rem' }}>
+                      <span key={cat.id} className="badge badge-blue" style={{ marginRight: '0.25rem', display: 'inline-block' }}>
                         {cat.name}
                       </span>
                     ))}
