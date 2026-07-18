@@ -63,7 +63,7 @@ export default function CategoryMultiSelect({ categories = [], selectedIds = [],
   return (
     <div className="category-multiselect-container" ref={containerRef}>
       {/* Selected Pills / Trigger area */}
-      <div 
+      <div
         className={`category-multiselect-trigger ${isOpen ? 'active' : ''}`}
         onClick={() => setIsOpen(!isOpen)}
       >
@@ -72,14 +72,14 @@ export default function CategoryMultiSelect({ categories = [], selectedIds = [],
         ) : (
           <div className="selected-categories-pills">
             {selectedCategories.map(cat => (
-              <div 
-                key={cat.id} 
+              <div
+                key={cat.id}
                 className="selected-category-pill"
                 onClick={(e) => e.stopPropagation()} // Prevent toggling dropdown when clicking pill
               >
                 <span className="pill-name">{cat.name}</span>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   className="pill-close-btn"
                   onClick={(e) => handleDeselect(e, cat.id)}
                   aria-label={`Deselect ${cat.name}`}
@@ -111,8 +111,8 @@ export default function CategoryMultiSelect({ categories = [], selectedIds = [],
 
           {/* Select All */}
           {filteredCategories.length > 0 && (
-            <div 
-              className="dropdown-select-all-row" 
+            <div
+              className="dropdown-select-all-row"
               onClick={handleSelectAll}
             >
               <div className={`dropdown-square-checkbox ${isAllSelected ? 'checked' : ''}`}>

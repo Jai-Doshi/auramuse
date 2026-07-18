@@ -1267,7 +1267,7 @@ export async function claimDailyPack(userId) {
     if (claim) {
       const { error } = await supabase
         .from('user_claims')
-        .update({ 
+        .update({
           last_claimed_at: now.toISOString(),
           claims_today: claimsCount
         })
@@ -1276,8 +1276,8 @@ export async function claimDailyPack(userId) {
     } else {
       const { error } = await supabase
         .from('user_claims')
-        .insert([{ 
-          user_id: userId, 
+        .insert([{
+          user_id: userId,
           last_claimed_at: now.toISOString(),
           claims_today: claimsCount
         }]);

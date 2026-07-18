@@ -14,7 +14,7 @@ export default function ActressesPage() {
 
   const isActressUnlocked = (actressId) => {
     if (user?.role === 'admin') return true;
-    return collection.some(uc => 
+    return collection.some(uc =>
       uc.image && uc.image.actresses && uc.image.actresses.some(act => act.id === actressId)
     );
   };
@@ -263,7 +263,13 @@ export default function ActressesPage() {
   }
 
   // Get images specific to the selected actress (Checks many-to-many list)
-  const actressImages = images.filter(img => selectedActress && img.actresses?.some(a => a.id === selectedActress.id));
+  const actressImages = images.filter(img => {
+    if (!selectedActress) return false;
+    const matchesActress = img.actresses?.some(a => a.id === selectedActress.id);
+    if (!matchesActress) return false;
+    if (user?.role === 'admin') return true;
+    return collection.some(uc => uc.image_id === img.id);
+  });
   // Get stories specific to the selected actress
   const actressStories = stories.filter(story =>
     selectedActress && story.actresses?.some(act => act.id === selectedActress.id)
@@ -391,7 +397,11 @@ export default function ActressesPage() {
                   <div style={{ display: 'flex', gap: '1.5rem', marginTop: '0.5rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.9rem' }}>
                       <ImageIcon size={16} className="text-indigo" />
-                      <strong>{selectedActress.activity_stat}</strong>
+                      <strong>
+                        {user?.role === 'admin'
+                          ? selectedActress.activity_stat
+                          : `${actressImages.length} Image${actressImages.length !== 1 ? 's' : ''}`}
+                      </strong>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.9rem' }}>
                       <BookOpen size={16} className="text-yellow" />
