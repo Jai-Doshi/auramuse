@@ -211,28 +211,16 @@ export async function createCategory(name) {
 // 2. Actresses
 export async function getActresses() {
   if (isSupabaseConfigured) {
-    // Fetch actresses
+    // Fetch actresses along with their image and story links using join queries
     const { data: actresses, error: actError } = await supabase
       .from('actresses')
-      .select('*')
+      .select('*, images:image_actresses(image_id), stories:story_actresses(story_id)')
       .order('name', { ascending: true });
     if (actError) throw actError;
 
-    // Fetch many-to-many image links
-    const { data: imageActresses, error: imgError } = await supabase
-      .from('image_actresses')
-      .select('actress_id');
-    if (imgError) throw imgError;
-
-    // Fetch story relations
-    const { data: storyActresses, error: storyError } = await supabase
-      .from('story_actresses')
-      .select('actress_id');
-    if (storyError) throw storyError;
-
     return actresses.map(actress => {
-      const imgCount = imageActresses.filter(ia => ia.actress_id === actress.id).length;
-      const storyCount = storyActresses.filter(sa => sa.actress_id === actress.id).length;
+      const imgCount = actress.images ? actress.images.length : 0;
+      const storyCount = actress.stories ? actress.stories.length : 0;
       return {
         ...actress,
         activity_stat: `${imgCount} Image${imgCount !== 1 ? 's' : ''}`,
@@ -289,32 +277,20 @@ export async function createActress(name, profile_picture, bio = '') {
 // 3. Images
 export async function getImages() {
   if (isSupabaseConfigured) {
-    // Get all images
+    // Get all images with their categories and actresses joined nested
     const { data: images, error } = await supabase
       .from('images')
-      .select('*')
+      .select('*, categories:image_categories(category:categories(*)), actresses:image_actresses(actress:actresses(*))')
       .order('created_at', { ascending: false });
     if (error) throw error;
 
-    // Get all image category links
-    const { data: imageCategories, error: icError } = await supabase
-      .from('image_categories')
-      .select('*, category:categories(*)');
-    if (icError) throw icError;
-
-    // Get all image actress links
-    const { data: imageActresses, error: iaError } = await supabase
-      .from('image_actresses')
-      .select('*, actress:actresses(*)');
-    if (iaError) throw iaError;
-
     return images.map(img => {
-      const categories = imageCategories
-        .filter(ic => ic.image_id === img.id)
-        .map(ic => ic.category);
-      const actresses = imageActresses
-        .filter(ia => ia.image_id === img.id)
-        .map(ia => ia.actress);
+      const categories = img.categories
+        ? img.categories.map(c => c.category).filter(Boolean)
+        : [];
+      const actresses = img.actresses
+        ? img.actresses.map(a => a.actress).filter(Boolean)
+        : [];
       return {
         ...img,
         categories,
@@ -445,44 +421,27 @@ export async function getStories() {
   if (isSupabaseConfigured) {
     const { data: stories, error: storyError } = await supabase
       .from('stories')
-      .select('*')
+      .select('*, actresses:story_actresses(actress:actresses(*)), images:story_images(description, image:images(*, actresses:image_actresses(actress:actresses(*))))')
       .order('created_at', { ascending: false });
     if (storyError) throw storyError;
 
-    // Fetch story actresses mapping
-    const { data: storyActresses, error: saError } = await supabase
-      .from('story_actresses')
-      .select('*, actress:actresses(*)');
-    if (saError) throw saError;
-
-    // Fetch story images mapping
-    const { data: storyImages, error: siError } = await supabase
-      .from('story_images')
-      .select('*, image:images(*)');
-    if (siError) throw siError;
-
-    // Fetch all image_actresses mapping to populate actresses inside story images
-    const { data: imageActresses, error: iaError } = await supabase
-      .from('image_actresses')
-      .select('*, actress:actresses(*)');
-    if (iaError) throw iaError;
-
     return stories.map(story => {
-      const actresses = storyActresses
-        .filter(sa => sa.story_id === story.id)
-        .map(sa => sa.actress);
-      const images = storyImages
-        .filter(si => si.story_id === story.id)
-        .map(si => {
-          const imgActresses = imageActresses
-            .filter(ia => ia.image_id === si.image.id)
-            .map(ia => ia.actress);
-          return {
-            ...si.image,
-            description: si.description,
-            actresses: imgActresses
-          };
-        });
+      const actresses = story.actresses
+        ? story.actresses.map(sa => sa.actress).filter(Boolean)
+        : [];
+      const images = story.images
+        ? story.images.map(si => {
+            if (!si.image) return null;
+            const imgActresses = si.image.actresses
+              ? si.image.actresses.map(ia => ia.actress).filter(Boolean)
+              : [];
+            return {
+              ...si.image,
+              description: si.description,
+              actresses: imgActresses
+            };
+          }).filter(Boolean)
+        : [];
       return {
         ...story,
         actresses,
@@ -961,41 +920,27 @@ export async function getUserCards(userId) {
   if (isSupabaseConfigured) {
     const { data, error } = await supabase
       .from('user_cards')
-      .select('*, image:images(*)')
+      .select('*, image:images(*, categories:image_categories(category:categories(*)), actresses:image_actresses(actress:actresses(*)))')
       .eq('user_id', userId);
     if (error) throw error;
 
-    // Resolve actresses and categories for each image
-    if (data && data.length > 0) {
-      const { data: imageActresses, error: iaError } = await supabase
-        .from('image_actresses')
-        .select('*, actress:actresses(*)');
-      if (iaError) throw iaError;
-
-      const { data: imageCategories, error: icError } = await supabase
-        .from('image_categories')
-        .select('*, category:categories(*)');
-      if (icError) throw icError;
-
-      return data.map(uc => {
-        if (!uc.image) return uc;
-        const actresses = imageActresses
-          .filter(ia => ia.image_id === uc.image.id)
-          .map(ia => ia.actress);
-        const categories = imageCategories
-          .filter(ic => ic.image_id === uc.image.id)
-          .map(ic => ic.category);
-        return {
-          ...uc,
-          image: {
-            ...uc.image,
-            actresses,
-            categories
-          }
-        };
-      });
-    }
-    return data;
+    return data.map(uc => {
+      if (!uc.image) return uc;
+      const categories = uc.image.categories
+        ? uc.image.categories.map(c => c.category).filter(Boolean)
+        : [];
+      const actresses = uc.image.actresses
+        ? uc.image.actresses.map(a => a.actress).filter(Boolean)
+        : [];
+      return {
+        ...uc,
+        image: {
+          ...uc.image,
+          categories,
+          actresses
+        }
+      };
+    });
   } else {
     const db = readLocalDb();
     const userCards = db.user_cards.filter(uc => uc.user_id === userId);
@@ -1327,8 +1272,8 @@ export async function getAdminStats() {
   if (isSupabaseConfigured) {
     const { count: usersCount } = await supabase.from('app_users').select('*', { count: 'exact', head: true });
     const { count: premiumCount } = await supabase.from('app_users').select('*', { count: 'exact', head: true }).eq('premium', true);
-    const { count: imagesCount } = await supabase.from('app_images').select('*', { count: 'exact', head: true });
-    const { count: actressesCount } = await supabase.from('app_actresses').select('*', { count: 'exact', head: true });
+    const { count: imagesCount } = await supabase.from('images').select('*', { count: 'exact', head: true });
+    const { count: actressesCount } = await supabase.from('actresses').select('*', { count: 'exact', head: true });
     return {
       totalUsers: usersCount || 0,
       premiumUsers: premiumCount || 0,
@@ -1341,8 +1286,8 @@ export async function getAdminStats() {
     return {
       totalUsers: db.app_users.length,
       premiumUsers: premiumCount,
-      totalImages: db.app_images?.length || 0,
-      totalActresses: db.app_actresses?.length || 0
+      totalImages: db.images?.length || 0,
+      totalActresses: db.actresses?.length || 0
     };
   }
 }

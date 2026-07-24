@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Search, Heart, Copy, Check, X, ExternalLink, Sparkles, SlidersHorizontal, ChevronLeft, ChevronRight, LayoutGrid, Image as ImageIcon, Lock, Crown, Award } from 'lucide-react';
+import { Search, Heart, Copy, Check, X, ExternalLink, Sparkles, SlidersHorizontal, ChevronLeft, ChevronRight, LayoutGrid, Image as ImageIcon, Lock, Crown, Award, UploadCloud } from 'lucide-react';
 import Link from 'next/link';
 import ActressMultiSelect from '@/components/ActressMultiSelect';
 import CategoryMultiSelect from '@/components/CategoryMultiSelect';
@@ -46,7 +46,12 @@ export default function GalleryPage() {
   const [selectedImage, setSelectedImage] = useState(null);
   const [copied, setCopied] = useState(false);
   const [editImageModal, setEditImageModal] = useState(false);
-  const [editImage, setEditImage] = useState({ id: '', prompt: '', categoryIds: [], actressIds: [], preview: '' });
+  const [editImage, setEditImage] = useState({ id: '', prompt: '', categoryIds: [], actressIds: [], preview: '', file: null });
+
+  // Replicate Image State
+  const [replicateImageModal, setReplicateImageModal] = useState(false);
+  const [replicateImage, setReplicateImage] = useState({ prompt: '', categoryIds: [], actressIds: [], file: null, preview: null });
+
   const [submitting, setSubmitting] = useState(false);
 
   // Toast & Custom Confirm Modal States
@@ -158,9 +163,21 @@ export default function GalleryPage() {
       prompt: img.prompt,
       categoryIds: img.categories?.map(c => c.id) || [],
       actressIds: img.actresses?.map(a => a.id) || [],
-      preview: img.url
+      preview: img.url,
+      file: null
     });
     setEditImageModal(true);
+  };
+
+  const handleEditFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setEditImage(prev => ({ ...prev, file, preview: reader.result }));
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleUpdateImage = async (e) => {
@@ -171,13 +188,20 @@ export default function GalleryPage() {
     }
     setSubmitting(true);
     try {
+      let url = undefined;
+      if (editImage.file) {
+        const uploadRes = await uploadImageFile(editImage.file, 'ai-images');
+        url = uploadRes.url;
+      }
+
       const res = await fetch(`/api/db/images/${editImage.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt: editImage.prompt,
           category_ids: editImage.categoryIds,
-          actress_ids: editImage.actressIds
+          actress_ids: editImage.actressIds,
+          url: url
         })
       });
       if (!res.ok) {
@@ -188,6 +212,78 @@ export default function GalleryPage() {
       setSelectedImage(null);
       await fetchData();
       showToast('AI Graphic updated successfully!', 'success');
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleOpenReplicateModal = (img) => {
+    setReplicateImage({
+      prompt: img.prompt,
+      categoryIds: img.categories?.map(c => c.id) || [],
+      actressIds: img.actresses?.map(a => a.id) || [],
+      file: null,
+      preview: null
+    });
+    setReplicateImageModal(true);
+  };
+
+  const handleReplicateFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setReplicateImage(prev => ({ ...prev, file, preview: reader.result }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const uploadImageFile = async (file, type = 'ai-images') => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('type', type);
+    const res = await fetch('/api/upload', {
+      method: 'POST',
+      body: formData
+    });
+    if (!res.ok) {
+      const errData = await res.json();
+      throw new Error(errData.error || 'Failed to upload image file');
+    }
+    return await res.json();
+  };
+
+  const handleSaveReplicatedImage = async (e) => {
+    e.preventDefault();
+    if (!replicateImage.prompt.trim() || replicateImage.actressIds.length === 0 || !replicateImage.file) {
+      showToast('Please enter prompt, select at least one actress, and upload an image', 'error');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const uploadRes = await uploadImageFile(replicateImage.file, 'ai-images');
+      const res = await fetch('/api/db/images', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: uploadRes.url,
+          prompt: replicateImage.prompt,
+          category_ids: replicateImage.categoryIds,
+          actress_ids: replicateImage.actressIds
+        })
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to save replicated image');
+      }
+      setReplicateImageModal(false);
+      setReplicateImage({ prompt: '', categoryIds: [], actressIds: [], file: null, preview: null });
+      setSelectedImage(null);
+      await fetchData();
+      showToast('AI Graphic replicated successfully!', 'success');
     } catch (err) {
       showToast(err.message, 'error');
     } finally {
@@ -703,7 +799,14 @@ export default function GalleryPage() {
                           style={{ flex: 1 }}
                           onClick={() => handleOpenEditModal(selectedImage)}
                         >
-                          Edit Details
+                          Edit
+                        </button>
+                        <button
+                          className="btn btn-secondary"
+                          style={{ flex: 1 }}
+                          onClick={() => handleOpenReplicateModal(selectedImage)}
+                        >
+                          Replicate
                         </button>
                         <button
                           className="btn btn-outline"
@@ -734,10 +837,23 @@ export default function GalleryPage() {
             </div>
             <div className="modal-body">
               <div className="form-group">
-                <label>Graphic Preview</label>
-                <div style={{ display: 'flex', justifyContent: 'center' }}>
-                  <img src={editImage.preview} alt="Preview" style={{ maxHeight: '180px', borderRadius: '10px', objectFit: 'contain' }} />
-                </div>
+                <label>Graphic File (Optional - click/drop to update image)</label>
+                <label className="upload-dropzone">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={handleEditFileChange}
+                  />
+                  {editImage.preview ? (
+                    <img src={editImage.preview} alt="Graphic preview" className="upload-preview" />
+                  ) : (
+                    <>
+                      <UploadCloud className="upload-icon" size={32} />
+                      <span style={{ fontSize: '0.85rem' }}>Upload AI Generated Image</span>
+                    </>
+                  )}
+                </label>
               </div>
 
               <div className="form-group">
@@ -781,6 +897,84 @@ export default function GalleryPage() {
           </form>
         </div>
       )}
+
+      {/* --- REPLICATE IMAGE MODAL --- */}
+      {replicateImageModal && (
+        <div className="modal-overlay">
+          <form className="modal-container" onSubmit={handleSaveReplicatedImage}>
+            <div className="modal-header">
+              <span className="modal-title">Replicate AI Graphic</span>
+              <button type="button" className="modal-close-btn" onClick={() => setReplicateImageModal(false)}>
+                <X size={20} />
+              </button>
+            </div>
+            <div className="modal-body">
+              {/* Graphic File Dropzone */}
+              <div className="form-group">
+                <label>Graphic File</label>
+                <label className="upload-dropzone">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={handleReplicateFileChange}
+                    required
+                  />
+                  {replicateImage.preview ? (
+                    <img src={replicateImage.preview} alt="Graphic preview" className="upload-preview" />
+                  ) : (
+                    <>
+                      <UploadCloud className="upload-icon" size={32} />
+                      <span style={{ fontSize: '0.85rem' }}>Upload AI Generated Image</span>
+                    </>
+                  )}
+                </label>
+              </div>
+
+              {/* Featured AI Actresses Multi-select */}
+              <div className="form-group">
+                <label>Featured AI Actresses (Select all featured)</label>
+                <ActressMultiSelect
+                  actresses={actresses}
+                  selectedIds={replicateImage.actressIds}
+                  onChange={(ids) => setReplicateImage(prev => ({ ...prev, actressIds: ids }))}
+                  placeholder="Select Featured Actresses"
+                />
+              </div>
+
+              {/* Categories Multi-select */}
+              <div className="form-group">
+                <label>Categories (Select Multiple)</label>
+                <CategoryMultiSelect
+                  categories={categories}
+                  selectedIds={replicateImage.categoryIds}
+                  onChange={(ids) => setReplicateImage(prev => ({ ...prev, categoryIds: ids }))}
+                  placeholder="Select Categories"
+                />
+              </div>
+
+              {/* Prompt Description */}
+              <div className="form-group">
+                <label>Prompt Description used to generate image</label>
+                <textarea
+                  className="form-textarea"
+                  placeholder="Masterpiece, photorealistic portrait, detailed eyes, cinematic lighting..."
+                  value={replicateImage.prompt}
+                  onChange={(e) => setReplicateImage(prev => ({ ...prev, prompt: e.target.value }))}
+                  required
+                />
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-secondary" onClick={() => setReplicateImageModal(false)}>Cancel</button>
+              <button type="submit" className={`btn btn-primary ${submitting ? 'btn-disabled' : ''}`} disabled={submitting}>
+                {submitting ? 'Uploading...' : 'Save Replicated Graphic'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
 
       {/* Confirmation Modal */}
       {confirmModal.isOpen && (
