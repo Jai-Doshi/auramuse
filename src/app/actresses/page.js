@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { BookOpen, ImageIcon, Heart, Copy, Check, X, ArrowLeft, Sparkles, UploadCloud, Lock, Award } from 'lucide-react';
+import { BookOpen, ImageIcon, Heart, Copy, Check, X, ArrowLeft, Sparkles, UploadCloud, Lock, Award, Download, Crown } from 'lucide-react';
 import { useTheme } from '@/components/ThemeContext';
 
 export default function ActressesPage() {
@@ -132,6 +132,30 @@ export default function ActressesPage() {
     navigator.clipboard.writeText(prompt);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleDownload = async (imageUrl, promptText) => {
+    try {
+      showToast('Preparing download...', 'info');
+      const response = await fetch(imageUrl);
+      if (!response.ok) throw new Error('Network response was not ok');
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      const cleanPrompt = promptText ? promptText.slice(0, 30).replace(/[^a-zA-Z0-9]/g, '_') : 'image';
+      link.download = `${cleanPrompt}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+      showToast('Download started!', 'success');
+    } catch (error) {
+      console.error('Failed to download image', error);
+      // Fallback: open in new tab
+      window.open(imageUrl, '_blank');
+      showToast('Opened image in a new tab for download', 'info');
+    }
   };
 
   const handleOpenEditModal = (actress) => {
@@ -540,15 +564,51 @@ export default function ActressesPage() {
                   </div>
 
                   <div style={{ display: 'flex', gap: '0.75rem', marginTop: '2rem' }}>
-                    <button
-                      className={`btn ${isImgFavorite(selectedImage.id) ? 'btn-primary' : 'btn-secondary'}`}
-                      style={{ flex: 1, backgroundColor: isImgFavorite(selectedImage.id) ? '#ef4444' : '' }}
-                      onClick={() => handleToggleFavorite(selectedImage.id)}
-                    >
-                      <Heart size={18} fill={isImgFavorite(selectedImage.id) ? 'white' : 'none'} />
-                      {isImgFavorite(selectedImage.id) ? 'Favorited' : 'Add to Favorites'}
-                    </button>
+                    {(user?.premium === true || user?.role === 'admin') ? (
+                      <>
+                        <button
+                          className={`btn ${isImgFavorite(selectedImage.id) ? 'btn-primary' : 'btn-secondary'}`}
+                          style={{ flex: 1, backgroundColor: isImgFavorite(selectedImage.id) ? '#ef4444' : '' }}
+                          onClick={() => handleToggleFavorite(selectedImage.id)}
+                        >
+                          <Heart size={18} fill={isImgFavorite(selectedImage.id) ? 'white' : 'none'} />
+                          {isImgFavorite(selectedImage.id) ? 'Favorited' : 'Add to Favorites'}
+                        </button>
+                        <button
+                          className="btn btn-secondary"
+                          style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+                          onClick={() => handleDownload(selectedImage.url, selectedImage.prompt)}
+                        >
+                          <Download size={18} />
+                          Download
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          className="btn btn-secondary"
+                          style={{ flex: 1, opacity: 0.65 }}
+                          onClick={() => {
+                            showToast('🔒 Favorites are exclusive to Premium users! Upgrade to unlock.', 'error');
+                          }}
+                        >
+                          <Crown size={18} className="text-yellow" style={{ marginRight: '0.4rem', display: 'inline', verticalAlign: 'middle' }} />
+                          Add to Favorites (Premium Only)
+                        </button>
+                        <button
+                          className="btn btn-secondary"
+                          style={{ flex: 1, opacity: 0.65, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+                          onClick={() => {
+                            showToast('🔒 Image downloading is exclusive to Premium users! Upgrade to unlock.', 'error');
+                          }}
+                        >
+                          <Crown size={18} className="text-yellow" />
+                          Download (Premium Only)
+                        </button>
+                      </>
+                    )}
                   </div>
+
                 </div>
               </div>
             </div>

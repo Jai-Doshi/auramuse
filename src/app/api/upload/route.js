@@ -2,6 +2,21 @@ import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 import { createClient } from '@supabase/supabase-js';
+import { v2 as cloudinary } from 'cloudinary';
+
+const isCloudinaryConfigured = !!(
+  process.env.CLOUDINARY_CLOUD_NAME &&
+  process.env.CLOUDINARY_API_KEY &&
+  process.env.CLOUDINARY_API_SECRET
+);
+
+if (isCloudinaryConfigured) {
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
+  });
+}
 
 const isSupabaseConfigured = !!(
   process.env.NEXT_PUBLIC_SUPABASE_URL &&
@@ -35,7 +50,28 @@ export async function POST(request) {
     const ext = path.extname(file.name) || '.png';
     const filename = `img_${timestamp}_${random}${ext}`;
 
-    if (isSupabaseConfigured && supabase) {
+    if (isCloudinaryConfigured) {
+      // Upload to Cloudinary
+      const folderName = `ai-graphics/${type}`;
+      const publicId = path.parse(filename).name; // use filename without extension as public_id
+
+      const uploadResult = await new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          {
+            folder: folderName,
+            public_id: publicId,
+            resource_type: 'auto'
+          },
+          (error, result) => {
+            if (error) reject(error);
+            else resolve(result);
+          }
+        );
+        uploadStream.end(buffer);
+      });
+
+      return NextResponse.json({ url: uploadResult.secure_url, filename: uploadResult.public_id });
+    } else if (isSupabaseConfigured && supabase) {
       // 1. Upload to Supabase Storage Bucket matching the type
       let { data, error } = await supabase.storage
         .from(type)

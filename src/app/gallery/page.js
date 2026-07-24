@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Search, Heart, Copy, Check, X, ExternalLink, Sparkles, SlidersHorizontal, ChevronLeft, ChevronRight, LayoutGrid, Image as ImageIcon, Lock, Crown, Award, UploadCloud } from 'lucide-react';
+import { Search, Heart, Copy, Check, X, ExternalLink, Sparkles, SlidersHorizontal, ChevronLeft, ChevronRight, LayoutGrid, Image as ImageIcon, Lock, Crown, Award, UploadCloud, Download } from 'lucide-react';
 import Link from 'next/link';
 import ActressMultiSelect from '@/components/ActressMultiSelect';
 import CategoryMultiSelect from '@/components/CategoryMultiSelect';
@@ -155,6 +155,30 @@ export default function GalleryPage() {
     navigator.clipboard.writeText(prompt);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleDownload = async (imageUrl, promptText) => {
+    try {
+      showToast('Preparing download...', 'info');
+      const response = await fetch(imageUrl);
+      if (!response.ok) throw new Error('Network response was not ok');
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      const cleanPrompt = promptText ? promptText.slice(0, 30).replace(/[^a-zA-Z0-9]/g, '_') : 'image';
+      link.download = `${cleanPrompt}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+      showToast('Download started!', 'success');
+    } catch (error) {
+      console.error('Failed to download image', error);
+      // Fallback: open in new tab
+      window.open(imageUrl, '_blank');
+      showToast('Opened image in a new tab for download', 'info');
+    }
   };
 
   const handleOpenEditModal = (img) => {
@@ -771,26 +795,49 @@ export default function GalleryPage() {
                   {/* Actions footer inside detail panel */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '1.5rem' }}>
                     {(user?.premium === true || user?.role === 'admin') ? (
-                      <button
-                        className={`btn ${isImgFavorite(selectedImage.id) ? 'btn-primary' : 'btn-secondary'}`}
-                        style={{ width: '100%', backgroundColor: isImgFavorite(selectedImage.id) ? '#ef4444' : '' }}
-                        onClick={() => handleToggleFavorite(selectedImage.id)}
-                      >
-                        <Heart size={18} fill={isImgFavorite(selectedImage.id) ? 'white' : 'none'} />
-                        {isImgFavorite(selectedImage.id) ? 'Favorited' : 'Add to Favorites'}
-                      </button>
+                      <>
+                        <button
+                          className={`btn ${isImgFavorite(selectedImage.id) ? 'btn-primary' : 'btn-secondary'}`}
+                          style={{ width: '100%', backgroundColor: isImgFavorite(selectedImage.id) ? '#ef4444' : '' }}
+                          onClick={() => handleToggleFavorite(selectedImage.id)}
+                        >
+                          <Heart size={18} fill={isImgFavorite(selectedImage.id) ? 'white' : 'none'} />
+                          {isImgFavorite(selectedImage.id) ? 'Favorited' : 'Add to Favorites'}
+                        </button>
+                        <button
+                          className="btn btn-secondary"
+                          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+                          onClick={() => handleDownload(selectedImage.url, selectedImage.prompt)}
+                        >
+                          <Download size={18} />
+                          Download Graphic
+                        </button>
+                      </>
                     ) : (
-                      <button
-                        className="btn btn-secondary"
-                        style={{ width: '100%', opacity: 0.65 }}
-                        onClick={() => {
-                          showToast('🔒 Favorites are exclusive to Premium users! Upgrade to unlock.', 'error');
-                        }}
-                      >
-                        <Crown size={18} className="text-yellow" style={{ marginRight: '0.4rem', display: 'inline', verticalAlign: 'middle' }} />
-                        Add to Favorites (Premium Only)
-                      </button>
+                      <>
+                        <button
+                          className="btn btn-secondary"
+                          style={{ width: '100%', opacity: 0.65 }}
+                          onClick={() => {
+                            showToast('🔒 Favorites are exclusive to Premium users! Upgrade to unlock.', 'error');
+                          }}
+                        >
+                          <Crown size={18} className="text-yellow" style={{ marginRight: '0.4rem', display: 'inline', verticalAlign: 'middle' }} />
+                          Add to Favorites (Premium Only)
+                        </button>
+                        <button
+                          className="btn btn-secondary"
+                          style={{ width: '100%', opacity: 0.65, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+                          onClick={() => {
+                            showToast('🔒 Image downloading is exclusive to Premium users! Upgrade to unlock.', 'error');
+                          }}
+                        >
+                          <Crown size={18} className="text-yellow" />
+                          Download Graphic (Premium Only)
+                        </button>
+                      </>
                     )}
+                  </div>
 
                     {user?.role === 'admin' && (
                       <div style={{ display: 'flex', gap: '0.75rem', width: '100%' }}>
@@ -822,7 +869,6 @@ export default function GalleryPage() {
               </div>
             </div>
           </div>
-        </div>
       )}
 
       {/* --- EDIT IMAGE MODAL --- */}
@@ -1026,6 +1072,8 @@ export default function GalleryPage() {
           currentIndex={lightboxIndex}
           onClose={() => setLightboxIndex(null)}
           onNavigate={(newIndex) => setLightboxIndex(newIndex)}
+          user={user}
+          handleDownload={handleDownload}
         />
       )}
 
@@ -1045,7 +1093,7 @@ export default function GalleryPage() {
 }
 
 // Highly polished, details-free, scrolling Lightbox Modal for Gallery View
-function LightboxModal({ images, currentIndex, onClose, onNavigate }) {
+function LightboxModal({ images, currentIndex, onClose, onNavigate, user, handleDownload }) {
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'ArrowLeft') {
@@ -1078,12 +1126,72 @@ function LightboxModal({ images, currentIndex, onClose, onNavigate }) {
   const currentImg = images[currentIndex];
   if (!currentImg) return null;
 
+  const isPremium = user?.premium === true || user?.role === 'admin';
+
   return (
     <div className="lightbox-overlay" onClick={onClose}>
       {/* Close button */}
       <button className="lightbox-close-btn" onClick={onClose} aria-label="Close Lightbox">
         <X size={24} />
       </button>
+
+      {/* Premium Download button */}
+      {isPremium ? (
+        <button
+          className="lightbox-download-btn"
+          style={{
+            position: 'absolute',
+            top: '20px',
+            right: '80px',
+            background: 'rgba(255, 255, 255, 0.15)',
+            border: 'none',
+            borderRadius: '50%',
+            width: '44px',
+            height: '44px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#fff',
+            cursor: 'pointer',
+            zIndex: 1010,
+            transition: 'background 0.2s'
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleDownload(currentImg.url, currentImg.prompt);
+          }}
+          aria-label="Download Image"
+        >
+          <Download size={20} />
+        </button>
+      ) : (
+        <button
+          className="lightbox-download-btn"
+          style={{
+            position: 'absolute',
+            top: '20px',
+            right: '80px',
+            background: 'rgba(0, 0, 0, 0.4)',
+            border: 'none',
+            borderRadius: '50%',
+            width: '44px',
+            height: '44px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'rgba(255, 255, 255, 0.6)',
+            cursor: 'not-allowed',
+            zIndex: 1010
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+            alert('🔒 Media downloading is exclusive to Premium users! Upgrade to unlock.');
+          }}
+          aria-label="Download Locked"
+        >
+          <Crown size={16} className="text-yellow" />
+        </button>
+      )}
 
       {/* Navigation Arrow Left */}
       {currentIndex > 0 && (
