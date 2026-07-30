@@ -162,6 +162,15 @@ export default function StoryModePage() {
   });
   const [submitting, setSubmitting] = useState(false);
 
+  // Pagination States
+  const [currentPage, setCurrentPage] = useState(1);
+  const [imagePage, setImagePage] = useState(1);
+
+  // Reset image pagination when modal opens or selected actresses change
+  useEffect(() => {
+    setImagePage(1);
+  }, [imageSelectorModalOpen, editStory.selectedActresses]);
+
   // Custom Confirm Modal States
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
 
@@ -444,6 +453,60 @@ export default function StoryModePage() {
     });
   };
 
+  // Reusable pagination helper
+  const getPageNumbers = (totPages, curPage) => {
+    const pages = [];
+    const maxVisiblePages = 5;
+
+    if (totPages <= maxVisiblePages) {
+      for (let i = 1; i <= totPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      // Always show first page
+      pages.push(1);
+
+      let start = Math.max(2, curPage - 1);
+      let end = Math.min(totPages - 1, curPage + 1);
+
+      if (curPage <= 3) {
+        end = 4;
+      } else if (curPage >= totPages - 2) {
+        start = totPages - 3;
+      }
+
+      if (start > 2) {
+        pages.push('ellipsis1');
+      }
+
+      for (let i = start; i <= end; i++) {
+        pages.push(i);
+      }
+
+      if (end < totPages - 1) {
+        pages.push('ellipsis2');
+      }
+
+      // Always show last page
+      pages.push(totPages);
+    }
+
+    return pages;
+  };
+
+  // Story Pagination Calculations
+  const STORIES_PER_PAGE = 8;
+  const totalStoryPages = Math.ceil(stories.length / STORIES_PER_PAGE);
+  const startStoryIndex = (currentPage - 1) * STORIES_PER_PAGE;
+  const paginatedStories = stories.slice(startStoryIndex, startStoryIndex + STORIES_PER_PAGE);
+
+  // Modal Image Pagination Calculations
+  const IMAGES_PER_PAGE = 12;
+  const modalFilteredImages = images.filter(img => img.actresses?.some(a => editStory.selectedActresses.includes(a.id)));
+  const totalImagePages = Math.ceil(modalFilteredImages.length / IMAGES_PER_PAGE);
+  const startImageIndex = (imagePage - 1) * IMAGES_PER_PAGE;
+  const paginatedModalImages = modalFilteredImages.slice(startImageIndex, startImageIndex + IMAGES_PER_PAGE);
+
   if (loading) {
     return (
       <div className="fade-in">
@@ -477,8 +540,9 @@ export default function StoryModePage() {
         </div>
       ) : (
         /* Masonry styled gallery of stories */
-        <div className="story-masonry-gallery">
-          {stories.map((story) => {
+        <>
+          <div className="story-masonry-gallery">
+            {paginatedStories.map((story) => {
             const pageCount = story.images?.length || 0;
             const coverPoster = story.cover_poster || '/logo.png';
             const unlocked = isStoryUnlocked(story);
@@ -587,7 +651,68 @@ export default function StoryModePage() {
               </div>
             );
           })}
-        </div>
+          </div>
+
+          {/* Story Pagination Controls */}
+          {totalStoryPages > 1 && (
+            <div style={{ marginTop: '2rem' }}>
+              <div className="pagination-container">
+                <button
+                  type="button"
+                  className="pagination-btn"
+                  disabled={currentPage === 1}
+                  onClick={() => {
+                    setCurrentPage(prev => Math.max(prev - 1, 1));
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  aria-label="Previous Page"
+                >
+                  <ChevronLeft size={18} />
+                </button>
+
+                {getPageNumbers(totalStoryPages, currentPage).map((page, index) => {
+                  if (page === 'ellipsis1' || page === 'ellipsis2') {
+                    return (
+                      <span key={`ellipsis-${index}`} className="pagination-ellipsis">
+                        ...
+                      </span>
+                    );
+                  }
+
+                  return (
+                    <button
+                      key={page}
+                      type="button"
+                      className={`pagination-btn ${currentPage === page ? 'active' : ''}`}
+                      onClick={() => {
+                        setCurrentPage(page);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                    >
+                      {page}
+                    </button>
+                  );
+                })}
+
+                <button
+                  type="button"
+                  className="pagination-btn"
+                  disabled={currentPage === totalStoryPages}
+                  onClick={() => {
+                    setCurrentPage(prev => Math.min(prev + 1, totalStoryPages));
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  aria-label="Next Page"
+                >
+                  <ChevronRight size={18} />
+                </button>
+              </div>
+              <div className="pagination-info">
+                Showing {startStoryIndex + 1}–{Math.min(startStoryIndex + STORIES_PER_PAGE, stories.length)} of {stories.length} stories
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* --- IMMERSIVE BOOK CAROUSEL VIEW MODAL --- */}
@@ -1023,26 +1148,78 @@ export default function StoryModePage() {
               </p>
 
               <div className="story-image-selector-grid">
-                {images
-                  .filter(img => img.actresses?.some(a => editStory.selectedActresses.includes(a.id)))
-                  .map(img => {
-                    const isSelected = editStory.selectedImages.some(i => i.id === img.id);
-                    return (
-                      <div
-                        key={img.id}
-                        className={`story-image-selector-card ${isSelected ? 'selected' : ''}`}
-                        onClick={() => toggleStoryImage(img)}
-                      >
-                        <img src={img.url} alt="Gallery graphic" className="selector-card-img" />
-                        {isSelected && (
-                          <div className="selector-checked-badge">
-                            <Check size={12} />
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+                {paginatedModalImages.map(img => {
+                  const isSelected = editStory.selectedImages.some(i => i.id === img.id);
+                  return (
+                    <div
+                      key={img.id}
+                      className={`story-image-selector-card ${isSelected ? 'selected' : ''}`}
+                      onClick={() => toggleStoryImage(img)}
+                    >
+                      <img src={img.url} alt="Gallery graphic" className="selector-card-img" />
+                      {isSelected && (
+                        <div className="selector-checked-badge">
+                          <Check size={12} />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
+
+              {/* Modal Image Pagination Controls */}
+              {totalImagePages > 1 && (
+                <div style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border-glass)', paddingTop: '1rem' }}>
+                  <div className="pagination-container" style={{ margin: '1rem 0 0.5rem 0' }}>
+                    <button
+                      type="button"
+                      className="pagination-btn"
+                      disabled={imagePage === 1}
+                      onClick={() => setImagePage(prev => Math.max(prev - 1, 1))}
+                      aria-label="Previous Page"
+                      style={{ height: '32px', minWidth: '32px' }}
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+
+                    {getPageNumbers(totalImagePages, imagePage).map((page, index) => {
+                      if (page === 'ellipsis1' || page === 'ellipsis2') {
+                        return (
+                          <span key={`ellipsis-${index}`} className="pagination-ellipsis" style={{ height: '32px', width: '32px' }}>
+                            ...
+                          </span>
+                        );
+                      }
+
+                      return (
+                        <button
+                          key={page}
+                          type="button"
+                          className={`pagination-btn ${imagePage === page ? 'active' : ''}`}
+                          onClick={() => setImagePage(page)}
+                          style={{ height: '32px', minWidth: '32px' }}
+                        >
+                          {page}
+                        </button>
+                      );
+                    })}
+
+                    <button
+                      type="button"
+                      className="pagination-btn"
+                      disabled={imagePage === totalImagePages}
+                      onClick={() => setImagePage(prev => Math.min(prev + 1, totalImagePages))}
+                      aria-label="Next Page"
+                      style={{ height: '32px', minWidth: '32px' }}
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+                  <div className="pagination-info" style={{ marginTop: '0.25rem' }}>
+                    Showing {startImageIndex + 1}–{Math.min(startImageIndex + IMAGES_PER_PAGE, modalFilteredImages.length)} of {modalFilteredImages.length} graphics
+                  </div>
+                </div>
+              )}
             </div>
             <div className="modal-footer" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
               <button
