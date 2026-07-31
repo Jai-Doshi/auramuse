@@ -41,6 +41,7 @@ export default function GalleryPage() {
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
+  const [goToPage, setGoToPage] = useState('');
 
   // Image Detail Modal State
   const [selectedImage, setSelectedImage] = useState(null);
@@ -652,53 +653,93 @@ export default function GalleryPage() {
       {/* Pagination Controls */}
       {totalPages > 1 && (
         <div style={{ marginTop: '2rem' }}>
-          <div className="pagination-container">
-            <button
-              className="pagination-btn"
-              disabled={currentPage === 1}
-              onClick={() => {
-                setCurrentPage(prev => Math.max(prev - 1, 1));
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }}
-              aria-label="Previous Page"
-            >
-              <ChevronLeft size={18} />
-            </button>
+          <div className="pagination-outer">
+            <div className="pagination-container">
+              <button
+                className="pagination-btn"
+                disabled={currentPage === 1}
+                onClick={() => {
+                  setCurrentPage(prev => Math.max(prev - 1, 1));
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                aria-label="Previous Page"
+              >
+                <ChevronLeft size={18} />
+              </button>
 
-            {getPageNumbers().map((page, index) => {
-              if (page === 'ellipsis1' || page === 'ellipsis2') {
+              {getPageNumbers().map((page, index) => {
+                if (page === 'ellipsis1' || page === 'ellipsis2') {
+                  return (
+                    <span key={`ellipsis-${index}`} className="pagination-ellipsis">
+                      ...
+                    </span>
+                  );
+                }
+
                 return (
-                  <span key={`ellipsis-${index}`} className="pagination-ellipsis">
-                    ...
-                  </span>
+                  <button
+                    key={page}
+                    className={`pagination-btn ${currentPage === page ? 'active' : ''}`}
+                    onClick={() => {
+                      setCurrentPage(page);
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                  >
+                    {page}
+                  </button>
                 );
-              }
+              })}
 
-              return (
-                <button
-                  key={page}
-                  className={`pagination-btn ${currentPage === page ? 'active' : ''}`}
-                  onClick={() => {
-                    setCurrentPage(page);
+              <button
+                className="pagination-btn"
+                disabled={currentPage === totalPages}
+                onClick={() => {
+                  setCurrentPage(prev => Math.min(prev + 1, totalPages));
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                aria-label="Next Page"
+              >
+                <ChevronRight size={18} />
+              </button>
+            </div>
+
+            <div className="pagination-goto">
+              <span className="pagination-goto-label">Go to</span>
+              <input
+                type="number"
+                min="1"
+                max={totalPages}
+                value={goToPage}
+                onChange={(e) => setGoToPage(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    const pageNum = parseInt(goToPage, 10);
+                    if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= totalPages) {
+                      setCurrentPage(pageNum);
+                      setGoToPage('');
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
+                  }
+                }}
+                placeholder="Page"
+                className="pagination-goto-input"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  const pageNum = parseInt(goToPage, 10);
+                  if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= totalPages) {
+                    setCurrentPage(pageNum);
+                    setGoToPage('');
                     window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
-                >
-                  {page}
-                </button>
-              );
-            })}
-
-            <button
-              className="pagination-btn"
-              disabled={currentPage === totalPages}
-              onClick={() => {
-                setCurrentPage(prev => Math.min(prev + 1, totalPages));
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }}
-              aria-label="Next Page"
-            >
-              <ChevronRight size={18} />
-            </button>
+                  }
+                }}
+                className="pagination-goto-btn"
+                disabled={!goToPage || isNaN(parseInt(goToPage, 10)) || parseInt(goToPage, 10) < 1 || parseInt(goToPage, 10) > totalPages}
+              >
+                Go
+              </button>
+            </div>
           </div>
           <div className="pagination-info">
             Showing {startIndex + 1}–{Math.min(startIndex + ITEMS_PER_PAGE, filteredImages.length)} of {filteredImages.length} graphics

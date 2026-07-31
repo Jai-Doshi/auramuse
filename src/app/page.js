@@ -61,6 +61,7 @@ export default function HomePage() {
 
   // Pagination State for Select Graphic Modal
   const [imagePage, setImagePage] = useState(1);
+  const [goToImagePage, setGoToImagePage] = useState('');
 
   // Reset image pagination when modal opens or selected actresses change
   useEffect(() => {
@@ -1201,50 +1202,88 @@ export default function HomePage() {
               {/* Modal Image Pagination Controls */}
               {totalImagePages > 1 && (
                 <div style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border-glass)', paddingTop: '1rem' }}>
-                  <div className="pagination-container" style={{ margin: '1rem 0 0.5rem 0' }}>
-                    <button
-                      type="button"
-                      className="pagination-btn"
-                      disabled={imagePage === 1}
-                      onClick={() => setImagePage(prev => Math.max(prev - 1, 1))}
-                      aria-label="Previous Page"
-                      style={{ height: '32px', minWidth: '32px' }}
-                    >
-                      <ChevronLeft size={16} />
-                    </button>
+                  <div className="pagination-outer" style={{ margin: '1rem 0 0.5rem 0' }}>
+                    <div className="pagination-container" style={{ margin: 0 }}>
+                      <button
+                        type="button"
+                        className="pagination-btn"
+                        disabled={imagePage === 1}
+                        onClick={() => setImagePage(prev => Math.max(prev - 1, 1))}
+                        aria-label="Previous Page"
+                        style={{ height: '32px', minWidth: '32px' }}
+                      >
+                        <ChevronLeft size={16} />
+                      </button>
 
-                    {getPageNumbers(totalImagePages, imagePage).map((page, index) => {
-                      if (page === 'ellipsis1' || page === 'ellipsis2') {
+                      {getPageNumbers(totalImagePages, imagePage).map((page, index) => {
+                        if (page === 'ellipsis1' || page === 'ellipsis2') {
+                          return (
+                            <span key={`ellipsis-${index}`} className="pagination-ellipsis" style={{ height: '32px', width: '32px' }}>
+                              ...
+                            </span>
+                          );
+                        }
+
                         return (
-                          <span key={`ellipsis-${index}`} className="pagination-ellipsis" style={{ height: '32px', width: '32px' }}>
-                            ...
-                          </span>
+                          <button
+                            key={page}
+                            type="button"
+                            className={`pagination-btn ${imagePage === page ? 'active' : ''}`}
+                            onClick={() => setImagePage(page)}
+                            style={{ height: '32px', minWidth: '32px' }}
+                          >
+                            {page}
+                          </button>
                         );
-                      }
+                      })}
 
-                      return (
-                        <button
-                          key={page}
-                          type="button"
-                          className={`pagination-btn ${imagePage === page ? 'active' : ''}`}
-                          onClick={() => setImagePage(page)}
-                          style={{ height: '32px', minWidth: '32px' }}
-                        >
-                          {page}
-                        </button>
-                      );
-                    })}
+                      <button
+                        type="button"
+                        className="pagination-btn"
+                        disabled={imagePage === totalImagePages}
+                        onClick={() => setImagePage(prev => Math.min(prev + 1, totalImagePages))}
+                        aria-label="Next Page"
+                        style={{ height: '32px', minWidth: '32px' }}
+                      >
+                        <ChevronRight size={16} />
+                      </button>
+                    </div>
 
-                    <button
-                      type="button"
-                      className="pagination-btn"
-                      disabled={imagePage === totalImagePages}
-                      onClick={() => setImagePage(prev => Math.min(prev + 1, totalImagePages))}
-                      aria-label="Next Page"
-                      style={{ height: '32px', minWidth: '32px' }}
-                    >
-                      <ChevronRight size={16} />
-                    </button>
+                    <div className="pagination-goto">
+                      <span className="pagination-goto-label">Go to</span>
+                      <input
+                        type="number"
+                        min="1"
+                        max={totalImagePages}
+                        value={goToImagePage}
+                        onChange={(e) => setGoToImagePage(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            const pageNum = parseInt(goToImagePage, 10);
+                            if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= totalImagePages) {
+                              setImagePage(pageNum);
+                              setGoToImagePage('');
+                            }
+                          }
+                        }}
+                        placeholder="Page"
+                        className="pagination-goto-input small"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const pageNum = parseInt(goToImagePage, 10);
+                          if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= totalImagePages) {
+                            setImagePage(pageNum);
+                            setGoToImagePage('');
+                          }
+                        }}
+                        className="pagination-goto-btn small"
+                        disabled={!goToImagePage || isNaN(parseInt(goToImagePage, 10)) || parseInt(goToImagePage, 10) < 1 || parseInt(goToImagePage, 10) > totalImagePages}
+                      >
+                        Go
+                      </button>
+                    </div>
                   </div>
                   <div className="pagination-info" style={{ marginTop: '0.25rem' }}>
                     Showing {startImageIndex + 1}–{Math.min(startImageIndex + IMAGES_PER_PAGE, modalFilteredImages.length)} of {modalFilteredImages.length} graphics

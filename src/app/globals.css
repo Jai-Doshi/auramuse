@@ -3986,14 +3986,22 @@ input:checked+.slider:before {
   }
 }
 
-/* Pagination Styling */
+.pagination-outer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin: 3rem 0 1rem 0;
+  flex-wrap: wrap;
+}
+
 .pagination-container {
   display: flex;
   justify-content: center;
   align-items: center;
   gap: 0.5rem;
-  margin: 3rem 0 1rem 0;
-  flex-wrap: wrap;
+  margin: 0;
+  flex-wrap: nowrap;
 }
 
 .pagination-btn {
@@ -4052,6 +4060,89 @@ input:checked+.slider:before {
   text-align: center;
   font-weight: 500;
 }
+
+/* Go to Page Styling */
+.pagination-goto {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-left: 0.5rem;
+}
+
+.pagination-goto-label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  user-select: none;
+}
+
+.pagination-goto-input {
+  width: 55px;
+  height: 40px;
+  padding: 0 0.5rem;
+  border-radius: 10px;
+  background: var(--bg-glass);
+  border: 1px solid var(--border-glass);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-align: center;
+  outline: none;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.pagination-goto-input::-webkit-outer-spin-button,
+.pagination-goto-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.pagination-goto-input[type=number] {
+  -moz-appearance: textfield;
+}
+
+.pagination-goto-input:focus {
+  border-color: var(--border-glass-glow);
+  box-shadow: 0 0 8px rgba(139, 92, 246, 0.25);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.pagination-goto-input.small {
+  height: 32px;
+  width: 48px;
+  font-size: 0.8rem;
+  border-radius: 8px;
+}
+
+.pagination-goto-btn {
+  height: 40px;
+  padding: 0 0.75rem;
+  border-radius: 10px;
+  background: var(--bg-glass);
+  border: 1px solid var(--border-glass);
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.pagination-goto-btn:hover {
+  border-color: var(--border-glass-glow);
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
+  transform: translateY(-1px);
+}
+
+.pagination-goto-btn.small {
+  height: 32px;
+  padding: 0 0.5rem;
+  font-size: 0.75rem;
+  border-radius: 8px;
+}
+
 
 /* Custom layouts for multi-selects in the gallery filter bar */
 .filter-options-panel .actress-multiselect-container,
