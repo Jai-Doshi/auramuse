@@ -14,7 +14,10 @@ import {
   Check,
   Copy,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  ArrowUp,
+  ArrowDown,
+  GripVertical
 } from 'lucide-react';
 import ActressMultiSelect from '@/components/ActressMultiSelect';
 import CategoryMultiSelect from '@/components/CategoryMultiSelect';
@@ -48,6 +51,7 @@ export default function HomePage() {
   const [newActress, setNewActress] = useState({ name: '', bio: '', file: null, preview: null });
   const [newImage, setNewImage] = useState({ prompt: '', categoryIds: [], actressIds: [], file: null, preview: null });
   const [newStory, setNewStory] = useState({ title: '', content: '', selectedActresses: [], selectedImages: [], coverPosterUrl: '', coverPosterFile: null, coverPosterPreview: null }); // selectedImages is array of { id, url, description }
+  const [draggedIndex, setDraggedIndex] = useState(null);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [editingCategoryId, setEditingCategoryId] = useState(null);
   const [editingCategoryName, setEditingCategoryName] = useState('');
@@ -398,6 +402,47 @@ export default function HomePage() {
       });
       return { ...prev, selectedImages: updated };
     });
+  };
+
+  // Helper move story image up/down
+  const moveCreateStoryImage = (index, direction) => {
+    setNewStory(prev => {
+      const images = [...prev.selectedImages];
+      const targetIndex = direction === 'up' ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= images.length) return prev;
+      
+      const temp = images[index];
+      images[index] = images[targetIndex];
+      images[targetIndex] = temp;
+      
+      return { ...prev, selectedImages: images };
+    });
+  };
+
+  // Helper drag & drop story image reordering
+  const handleDragStart = (e, index) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e, index) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e, index) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === index) return;
+    setNewStory(prev => {
+      const list = [...prev.selectedImages];
+      const draggedItem = list[draggedIndex];
+      list.splice(draggedIndex, 1);
+      list.splice(index, 0, draggedItem);
+      return { ...prev, selectedImages: list };
+    });
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
   };
 
   // Modal Image Pagination Calculations
@@ -990,17 +1035,64 @@ export default function HomePage() {
 
                     {newStory.selectedImages.length > 0 && (
                       <div className="selected-graphics-list" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                        {newStory.selectedImages.map(selImg => (
-                          <div key={selImg.id} className="selected-graphic-caption-row" style={{ display: 'flex', gap: '1rem', alignItems: 'center', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-glass)', padding: '0.6rem', borderRadius: '12px' }}>
+                        {newStory.selectedImages.map((selImg, idx) => (
+                          <div
+                            key={selImg.id}
+                            className="selected-graphic-caption-row"
+                            draggable
+                            onDragStart={(e) => handleDragStart(e, idx)}
+                            onDragOver={(e) => handleDragOver(e, idx)}
+                            onDrop={(e) => handleDrop(e, idx)}
+                            onDragEnd={handleDragEnd}
+                            style={{
+                              display: 'flex',
+                              gap: '1rem',
+                              alignItems: 'center',
+                              background: draggedIndex === idx ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.02)',
+                              border: draggedIndex === idx ? '1px dashed var(--accent-purple)' : '1px solid var(--border-glass)',
+                              padding: '0.6rem',
+                              borderRadius: '12px',
+                              cursor: 'grab',
+                              transition: 'background-color 0.2s, border 0.2s'
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', color: 'var(--text-secondary)' }}>
+                              <GripVertical size={16} />
+                            </div>
                             <img src={selImg.url} style={{ width: '50px', height: '50px', borderRadius: '8px', objectFit: 'cover', border: '1px solid var(--border-glass)' }} alt="Mini thumbnail" />
                             <input
                               type="text"
                               className="form-input"
-                              style={{ flex: 1, padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
+                              style={{ flex: 1, padding: '0.4rem 0.8rem', fontSize: '0.85rem', cursor: 'text' }}
                               placeholder="Image caption/description for the story (optional)"
                               value={selImg.description || ''}
                               onChange={(e) => updateStoryImageDescription(selImg.id, e.target.value)}
+                              onDragStart={(e) => e.stopPropagation()}
+                              draggable={false}
                             />
+                            {/* Reordering buttons */}
+                            <div style={{ display: 'flex', gap: '0.25rem' }}>
+                              <button
+                                type="button"
+                                className="btn-sm-icon"
+                                onClick={() => moveCreateStoryImage(idx, 'up')}
+                                disabled={idx === 0}
+                                style={{ padding: '0.35rem', opacity: idx === 0 ? 0.35 : 1, cursor: idx === 0 ? 'not-allowed' : 'pointer' }}
+                                title="Move image up"
+                              >
+                                <ArrowUp size={12} />
+                              </button>
+                              <button
+                                type="button"
+                                className="btn-sm-icon"
+                                onClick={() => moveCreateStoryImage(idx, 'down')}
+                                disabled={idx === newStory.selectedImages.length - 1}
+                                style={{ padding: '0.35rem', opacity: idx === newStory.selectedImages.length - 1 ? 0.35 : 1, cursor: idx === newStory.selectedImages.length - 1 ? 'not-allowed' : 'pointer' }}
+                                title="Move image down"
+                              >
+                                <ArrowDown size={12} />
+                              </button>
+                            </div>
                             <button
                               type="button"
                               className="btn-sm-icon btn-danger"

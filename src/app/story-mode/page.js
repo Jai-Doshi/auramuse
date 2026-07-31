@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { BookOpen, Sparkles, User, ImageIcon, Check, X, ChevronLeft, ChevronRight, Edit2, Trash2, Plus, UploadCloud, Lock, Crown } from 'lucide-react';
+import { BookOpen, Sparkles, User, ImageIcon, Check, X, ChevronLeft, ChevronRight, Edit2, Trash2, Plus, UploadCloud, Lock, Crown, ArrowUp, ArrowDown, GripVertical } from 'lucide-react';
 import Link from 'next/link';
 import ActressMultiSelect from '@/components/ActressMultiSelect';
 import { useTheme } from '@/components/ThemeContext';
@@ -160,6 +160,7 @@ export default function StoryModePage() {
     selectedActresses: [],
     selectedImages: []
   });
+  const [draggedIndex, setDraggedIndex] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
   // Pagination States
@@ -377,6 +378,47 @@ export default function StoryModePage() {
     });
   };
 
+  // Helper move edit story image up/down
+  const moveEditStoryImage = (index, direction) => {
+    setEditStory(prev => {
+      const images = [...prev.selectedImages];
+      const targetIndex = direction === 'up' ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= images.length) return prev;
+      
+      const temp = images[index];
+      images[index] = images[targetIndex];
+      images[targetIndex] = temp;
+      
+      return { ...prev, selectedImages: images };
+    });
+  };
+
+  // Helper drag & drop story image reordering
+  const handleDragStart = (e, index) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e, index) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e, index) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === index) return;
+    setEditStory(prev => {
+      const list = [...prev.selectedImages];
+      const draggedItem = list[draggedIndex];
+      list.splice(draggedIndex, 1);
+      list.splice(index, 0, draggedItem);
+      return { ...prev, selectedImages: list };
+    });
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+  };
+
   const handleUpdateStory = async (e) => {
     e.preventDefault();
     if (!editStory.title.trim() || editStory.selectedActresses.length === 0) {
@@ -543,114 +585,114 @@ export default function StoryModePage() {
         <>
           <div className="story-masonry-gallery">
             {paginatedStories.map((story) => {
-            const pageCount = story.images?.length || 0;
-            const coverPoster = story.cover_poster || '/logo.png';
-            const unlocked = isStoryUnlocked(story);
-            const isAdmin = user?.role === 'admin';
+              const pageCount = story.images?.length || 0;
+              const coverPoster = story.cover_poster || '/logo.png';
+              const unlocked = isStoryUnlocked(story);
+              const isAdmin = user?.role === 'admin';
 
-            return (
-              <div
-                key={story.id}
-                className={`story-masonry-card ${!unlocked ? 'locked-story-card' : ''}`}
-                onClick={() => {
-                  if (unlocked) {
-                    handleOpenStory(story);
-                  } else {
-                    const actressList = story.actresses?.map(a => a.name).join(', ') || 'N/A';
-                    showToast(`🔒 Story Locked! Collect cards of ${actressList} to unlock this lore.`, 'error');
-                  }
-                }}
-              >
-                {/* Story cover poster */}
-                <img
-                  src={coverPoster}
-                  alt={story.title}
-                  className={`story-masonry-cover ${!unlocked ? 'blur-locked-img' : ''}`}
-                  onError={(e) => {
-                    e.target.src = '/logo.png'; // fallback if image fails
+              return (
+                <div
+                  key={story.id}
+                  className={`story-masonry-card ${!unlocked ? 'locked-story-card' : ''}`}
+                  onClick={() => {
+                    if (unlocked) {
+                      handleOpenStory(story);
+                    } else {
+                      const actressList = story.actresses?.map(a => a.name).join(', ') || 'N/A';
+                      showToast(`🔒 Story Locked! Collect cards of ${actressList} to unlock this lore.`, 'error');
+                    }
                   }}
-                />
+                >
+                  {/* Story cover poster */}
+                  <img
+                    src={coverPoster}
+                    alt={story.title}
+                    className={`story-masonry-cover ${!unlocked ? 'blur-locked-img' : ''}`}
+                    onError={(e) => {
+                      e.target.src = '/logo.png'; // fallback if image fails
+                    }}
+                  />
 
-                {/* Top left corner: circles of actresses */}
-                <div className="story-card-actresses">
-                  {story.actresses?.slice(0, 4).map((actress, idx) => (
-                    <img
-                      key={actress.id}
-                      src={actress.profile_picture || '/logo.svg'}
-                      alt={actress.name}
-                      className="story-card-actress-avatar"
-                      style={{
-                        marginLeft: idx === 0 ? '0' : '-10px',
-                        zIndex: 10 - idx
-                      }}
-                      title={actress.name}
-                    />
-                  ))}
-                  {story.actresses?.length > 4 && (
-                    <div
-                      className="story-card-actress-avatar"
-                      style={{
-                        marginLeft: '-10px',
-                        zIndex: 5,
-                        background: 'var(--bg-secondary)',
-                        color: 'var(--text-primary)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '0.65rem',
-                        fontWeight: '700'
-                      }}
-                    >
-                      +{story.actresses.length - 4}
+                  {/* Top left corner: circles of actresses */}
+                  <div className="story-card-actresses">
+                    {story.actresses?.slice(0, 4).map((actress, idx) => (
+                      <img
+                        key={actress.id}
+                        src={actress.profile_picture || '/logo.svg'}
+                        alt={actress.name}
+                        className="story-card-actress-avatar"
+                        style={{
+                          marginLeft: idx === 0 ? '0' : '-10px',
+                          zIndex: 10 - idx
+                        }}
+                        title={actress.name}
+                      />
+                    ))}
+                    {story.actresses?.length > 4 && (
+                      <div
+                        className="story-card-actress-avatar"
+                        style={{
+                          marginLeft: '-10px',
+                          zIndex: 5,
+                          background: 'var(--bg-secondary)',
+                          color: 'var(--text-primary)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '0.65rem',
+                          fontWeight: '700'
+                        }}
+                      >
+                        +{story.actresses.length - 4}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Top right corner: total page/images counter */}
+                  <div className="story-card-page-count">
+                    <BookOpen size={12} style={{ color: 'var(--accent-purple)' }} />
+                    <span className="page-count-full">{pageCount} page{pageCount !== 1 ? 's' : ''}</span>
+                    <span className="page-count-mobile">{pageCount}</span>
+                  </div>
+
+                  {!unlocked ? (
+                    <div className="locked-story-overlay">
+                      <Lock size={32} className="text-muted" style={{ marginBottom: '0.5rem' }} />
+                      <span style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>LOCKED STORY</span>
+                    </div>
+                  ) : (
+                    /* Hover overlay showing title, description, and actions */
+                    <div className="story-card-overlay">
+                      <div className="story-card-overlay-content">
+                        <h3 className="story-card-title">{story.title}</h3>
+
+                        <p className="story-card-desc">
+                          {story.content && story.content.length > 120
+                            ? `${story.content.substring(0, 120)}...`
+                            : story.content}
+                        </p>
+
+                        <div className="story-card-actions" onClick={(e) => e.stopPropagation()}>
+                          <button className="btn btn-primary btn-sm" onClick={() => handleOpenStory(story)}>
+                            Read Story
+                          </button>
+                          {isAdmin && (
+                            <>
+                              <button className="btn-sm-icon" onClick={() => handleOpenEditModal(story)} title="Edit Story">
+                                <Edit2 size={13} />
+                              </button>
+                              <button className="btn-sm-icon btn-danger" onClick={() => handleDeleteStory(story.id)} title="Delete Story">
+                                <Trash2 size={13} />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
-
-                {/* Top right corner: total page/images counter */}
-                <div className="story-card-page-count">
-                  <BookOpen size={12} style={{ color: 'var(--accent-purple)' }} />
-                  <span className="page-count-full">{pageCount} page{pageCount !== 1 ? 's' : ''}</span>
-                  <span className="page-count-mobile">{pageCount}</span>
-                </div>
-
-                {!unlocked ? (
-                  <div className="locked-story-overlay">
-                    <Lock size={32} className="text-muted" style={{ marginBottom: '0.5rem' }} />
-                    <span style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>LOCKED STORY</span>
-                  </div>
-                ) : (
-                  /* Hover overlay showing title, description, and actions */
-                  <div className="story-card-overlay">
-                    <div className="story-card-overlay-content">
-                      <h3 className="story-card-title">{story.title}</h3>
-
-                      <p className="story-card-desc">
-                        {story.content && story.content.length > 120
-                          ? `${story.content.substring(0, 120)}...`
-                          : story.content}
-                      </p>
-
-                      <div className="story-card-actions" onClick={(e) => e.stopPropagation()}>
-                        <button className="btn btn-primary btn-sm" onClick={() => handleOpenStory(story)}>
-                          Read Story
-                        </button>
-                        {isAdmin && (
-                          <>
-                            <button className="btn-sm-icon" onClick={() => handleOpenEditModal(story)} title="Edit Story">
-                              <Edit2 size={13} />
-                            </button>
-                            <button className="btn-sm-icon btn-danger" onClick={() => handleDeleteStory(story.id)} title="Delete Story">
-                              <Trash2 size={13} />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+              );
+            })}
           </div>
 
           {/* Story Pagination Controls */}
@@ -1094,17 +1136,64 @@ export default function StoryModePage() {
 
                     {editStory.selectedImages.length > 0 && (
                       <div className="selected-graphics-list" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                        {editStory.selectedImages.map(selImg => (
-                          <div key={selImg.id} className="selected-graphic-caption-row" style={{ display: 'flex', gap: '1rem', alignItems: 'center', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-glass)', padding: '0.6rem', borderRadius: '12px' }}>
+                        {editStory.selectedImages.map((selImg, idx) => (
+                          <div
+                            key={selImg.id}
+                            className="selected-graphic-caption-row"
+                            draggable
+                            onDragStart={(e) => handleDragStart(e, idx)}
+                            onDragOver={(e) => handleDragOver(e, idx)}
+                            onDrop={(e) => handleDrop(e, idx)}
+                            onDragEnd={handleDragEnd}
+                            style={{
+                              display: 'flex',
+                              gap: '1rem',
+                              alignItems: 'center',
+                              background: draggedIndex === idx ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.02)',
+                              border: draggedIndex === idx ? '1px dashed var(--accent-purple)' : '1px solid var(--border-glass)',
+                              padding: '0.6rem',
+                              borderRadius: '12px',
+                              cursor: 'grab',
+                              transition: 'background-color 0.2s, border 0.2s'
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', color: 'var(--text-secondary)' }}>
+                              <GripVertical size={16} />
+                            </div>
                             <img src={selImg.url} style={{ width: '50px', height: '50px', borderRadius: '8px', objectFit: 'cover', border: '1px solid var(--border-glass)' }} alt="Mini thumbnail" />
                             <input
                               type="text"
                               className="form-input"
-                              style={{ flex: 1, padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
+                              style={{ flex: 1, padding: '0.4rem 0.8rem', fontSize: '0.85rem', cursor: 'text' }}
                               placeholder="Image caption/description for the story (optional)"
                               value={selImg.description || ''}
                               onChange={(e) => updateStoryImageDescription(selImg.id, e.target.value)}
+                              onDragStart={(e) => e.stopPropagation()}
+                              draggable={false}
                             />
+                            {/* Reordering buttons */}
+                            <div style={{ display: 'flex', gap: '0.25rem' }}>
+                              <button
+                                type="button"
+                                className="btn-sm-icon"
+                                onClick={() => moveEditStoryImage(idx, 'up')}
+                                disabled={idx === 0}
+                                style={{ padding: '0.35rem', opacity: idx === 0 ? 0.35 : 1, cursor: idx === 0 ? 'not-allowed' : 'pointer' }}
+                                title="Move image up"
+                              >
+                                <ArrowUp size={12} />
+                              </button>
+                              <button
+                                type="button"
+                                className="btn-sm-icon"
+                                onClick={() => moveEditStoryImage(idx, 'down')}
+                                disabled={idx === editStory.selectedImages.length - 1}
+                                style={{ padding: '0.35rem', opacity: idx === editStory.selectedImages.length - 1 ? 0.35 : 1, cursor: idx === editStory.selectedImages.length - 1 ? 'not-allowed' : 'pointer' }}
+                                title="Move image down"
+                              >
+                                <ArrowDown size={12} />
+                              </button>
+                            </div>
                             <button
                               type="button"
                               className="btn-sm-icon btn-danger"

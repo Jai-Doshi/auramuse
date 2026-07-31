@@ -435,12 +435,42 @@ export async function getStories() {
             const imgActresses = si.image.actresses
               ? si.image.actresses.map(ia => ia.actress).filter(Boolean)
               : [];
+            
+            // Parse sequence prefix from description if exists
+            let seq = 9999;
+            let cleanDesc = si.description || '';
+            const seqMatch = cleanDesc.match(/^\[seq-(\d+)\](.*)/s);
+            if (seqMatch) {
+              seq = parseInt(seqMatch[1], 10);
+              cleanDesc = seqMatch[2];
+            }
+
+            // Extract timestamp from created_at or filename url as fallback sorting key
+            let timestamp = 0;
+            if (si.image.created_at) {
+              timestamp = new Date(si.image.created_at).getTime();
+            } else if (si.image.url) {
+              const tsMatch = si.image.url.match(/img_(\d+)_/);
+              if (tsMatch) {
+                timestamp = parseInt(tsMatch[1], 10);
+              }
+            }
+
             return {
               ...si.image,
-              description: si.description,
+              description: cleanDesc,
+              sequence: seq,
+              timestamp: timestamp,
               actresses: imgActresses
             };
-          }).filter(Boolean)
+          })
+          .filter(Boolean)
+          .sort((a, b) => {
+            if (a.sequence !== b.sequence) {
+              return a.sequence - b.sequence;
+            }
+            return a.timestamp - b.timestamp;
+          })
         : [];
       return {
         ...story,
@@ -466,13 +496,42 @@ export async function getStories() {
             .filter(ia => ia.image_id === imgObj.id)
             .map(ia => db.actresses.find(a => a.id === ia.actress_id))
             .filter(Boolean);
+          
+          // Parse sequence prefix from description if exists
+          let seq = 9999;
+          let cleanDesc = si.description || '';
+          const seqMatch = cleanDesc.match(/^\[seq-(\d+)\](.*)/s);
+          if (seqMatch) {
+            seq = parseInt(seqMatch[1], 10);
+            cleanDesc = seqMatch[2];
+          }
+
+          // Extract timestamp from created_at or filename url as fallback sorting key
+          let timestamp = 0;
+          if (imgObj.created_at) {
+            timestamp = new Date(imgObj.created_at).getTime();
+          } else if (imgObj.url) {
+            const tsMatch = imgObj.url.match(/img_(\d+)_/);
+            if (tsMatch) {
+              timestamp = parseInt(tsMatch[1], 10);
+            }
+          }
+
           return {
             ...imgObj,
-            description: si.description,
+            description: cleanDesc,
+            sequence: seq,
+            timestamp: timestamp,
             actresses: imgActresses
           };
         })
-        .filter(Boolean);
+        .filter(Boolean)
+        .sort((a, b) => {
+          if (a.sequence !== b.sequence) {
+            return a.sequence - b.sequence;
+          }
+          return a.timestamp - b.timestamp;
+        });
       return {
         ...story,
         actresses,
@@ -506,12 +565,12 @@ export async function createStory(title, content, actress_ids = [], images = [],
       if (saError) throw saError;
     }
 
-    // Insert Image links
+    // Insert Image links with sequence number prefix
     if (images.length > 0) {
-      const imageInserts = images.map(img => ({
+      const imageInserts = images.map((img, idx) => ({
         story_id: story.id,
         image_id: img.image_id,
-        description: img.description || ''
+        description: `[seq-${idx}]${img.description || ''}`
       }));
       const { error: siError } = await supabase
         .from('story_images')
@@ -540,12 +599,12 @@ export async function createStory(title, content, actress_ids = [], images = [],
       });
     });
 
-    // Link images
-    images.forEach(img => {
+    // Link images with sequence number prefix
+    images.forEach((img, idx) => {
       db.story_images.push({
         story_id: storyId,
         image_id: img.image_id,
-        description: img.description || null
+        description: `[seq-${idx}]${img.description || ''}`
       });
     });
 
@@ -789,11 +848,12 @@ export async function updateStory(id, title, content, actress_ids = [], images =
       .eq('story_id', id);
     if (delSiError) throw delSiError;
 
+    // Insert Image links with sequence number prefix
     if (images.length > 0) {
-      const imageInserts = images.map(img => ({
+      const imageInserts = images.map((img, idx) => ({
         story_id: id,
         image_id: img.image_id,
-        description: img.description || ''
+        description: `[seq-${idx}]${img.description || ''}`
       }));
       const { error: insSiError } = await supabase
         .from('story_images')
@@ -820,11 +880,12 @@ export async function updateStory(id, title, content, actress_ids = [], images =
     });
 
     db.story_images = db.story_images.filter(si => si.story_id !== id);
-    images.forEach(img => {
+    // Link images with sequence number prefix
+    images.forEach((img, idx) => {
       db.story_images.push({
         story_id: id,
         image_id: img.image_id,
-        description: img.description || null
+        description: `[seq-${idx}]${img.description || ''}`
       });
     });
 
