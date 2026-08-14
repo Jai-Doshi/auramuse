@@ -277,14 +277,36 @@ export async function createActress(name, profile_picture, bio = '') {
 // 3. Images
 export async function getImages() {
   if (isSupabaseConfigured) {
-    // Get all images with their categories and actresses joined nested
-    const { data: images, error } = await supabase
-      .from('images')
-      .select('*, categories:image_categories(category:categories(*)), actresses:image_actresses(actress:actresses(*))')
-      .order('created_at', { ascending: false });
-    if (error) throw error;
+    let allImages = [];
+    let page = 0;
+    const pageSize = 1000;
+    let hasMore = true;
 
-    return images.map(img => {
+    while (hasMore) {
+      const from = page * pageSize;
+      const to = from + pageSize - 1;
+
+      const { data: images, error } = await supabase
+        .from('images')
+        .select('*, categories:image_categories(category:categories(*)), actresses:image_actresses(actress:actresses(*))')
+        .order('created_at', { ascending: false })
+        .range(from, to);
+
+      if (error) throw error;
+
+      if (images && images.length > 0) {
+        allImages = [...allImages, ...images];
+        if (images.length < pageSize) {
+          hasMore = false;
+        } else {
+          page++;
+        }
+      } else {
+        hasMore = false;
+      }
+    }
+
+    return allImages.map(img => {
       const categories = img.categories
         ? img.categories.map(c => c.category).filter(Boolean)
         : [];
