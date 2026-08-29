@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { BookOpen, ImageIcon, Heart, Copy, Check, X, ArrowLeft, Sparkles, UploadCloud, Lock, Award, Download, Crown } from 'lucide-react';
+import { BookOpen, ImageIcon, Heart, Copy, Check, X, ArrowLeft, Sparkles, UploadCloud, Lock, Award, Download, Crown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useTheme } from '@/components/ThemeContext';
 
 export default function ActressesPage() {
@@ -31,6 +31,8 @@ export default function ActressesPage() {
 
   // Active View States
   const [selectedActress, setSelectedActress] = useState(null); // Actress object if detail view active
+  const [actressImgPage, setActressImgPage] = useState(1);
+  const [goToActImgPage, setGoToActImgPage] = useState('');
   const [selectedImage, setSelectedImage] = useState(null); // Image object for the image detail modal
   const [copied, setCopied] = useState(false);
   const [editActressModal, setEditActressModal] = useState(false);
@@ -90,6 +92,12 @@ export default function ActressesPage() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Reset image pagination when actress changes
+  useEffect(() => {
+    setActressImgPage(1);
+    setGoToActImgPage('');
+  }, [selectedActress]);
 
   // Handle Favorites toggle for image modal
   const handleToggleFavorite = async (id) => {
@@ -299,6 +307,49 @@ export default function ActressesPage() {
     selectedActress && story.actresses?.some(act => act.id === selectedActress.id)
   );
 
+  // Actress Image Pagination Calculations
+  const IMAGES_PER_PAGE = 12;
+  const totalImgPages = Math.ceil(actressImages.length / IMAGES_PER_PAGE);
+  const startImgIndex = (actressImgPage - 1) * IMAGES_PER_PAGE;
+  const paginatedActressImages = actressImages.slice(startImgIndex, startImgIndex + IMAGES_PER_PAGE);
+
+  const getActressImgPageNumbers = () => {
+    const pages = [];
+    const maxVisiblePages = 5;
+
+    if (totalImgPages <= maxVisiblePages) {
+      for (let i = 1; i <= totalImgPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      pages.push(1);
+
+      let start = Math.max(2, actressImgPage - 1);
+      let end = Math.min(totalImgPages - 1, actressImgPage + 1);
+
+      if (actressImgPage <= 3) {
+        end = 4;
+      } else if (actressImgPage >= totalImgPages - 2) {
+        start = totalImgPages - 3;
+      }
+
+      if (start > 2) {
+        pages.push('ellipsis1');
+      }
+
+      for (let i = start; i <= end; i++) {
+        pages.push(i);
+      }
+
+      if (end < totalImgPages - 1) {
+        pages.push('ellipsis2');
+      }
+
+      pages.push(totalImgPages);
+    }
+    return pages;
+  };
+
   return (
     <div className="fade-in">
       {!selectedActress ? (
@@ -478,40 +529,134 @@ export default function ActressesPage() {
                 <p>No graphics uploaded for this actress yet.</p>
               </div>
             ) : (
-              <div className="gallery-grid">
-                {actressImages.map((img) => {
-                  const actressNames = img.actresses?.map(a => a.name).join(', ') || 'N/A';
-                  return (
-                    <div
-                      key={img.id}
-                      className="gallery-card"
-                      onClick={() => setSelectedImage(img)}
-                    >
-                      <img src={img.url} alt="AI Art" className="gallery-card-img" />
-                      {user?.role !== 'admin' && img.favorite && (
-                        <span className="badge-rare-unlock" style={{ top: '12px', left: '12px', scale: '0.85', transformOrigin: 'top left', position: 'absolute', zIndex: 10 }}>
-                          <Award size={12} /> RARE ART
-                        </span>
-                      )}
-                      <div className="gallery-card-overlay">
-                        <p className="gallery-card-prompt">{img.prompt}</p>
-                        <div className="gallery-card-meta">
-                          <span className="gallery-card-actress">{actressNames}</span>
-                          <button
-                            className={`gallery-card-favorite-btn ${isImgFavorite(img.id) ? 'favorited' : ''}`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleToggleFavorite(img.id);
-                            }}
-                          >
-                            <Heart size={20} fill={isImgFavorite(img.id) ? '#ef4444' : 'none'} />
-                          </button>
+              <>
+                <div className="gallery-grid">
+                  {paginatedActressImages.map((img) => {
+                    const actressNames = img.actresses?.map(a => a.name).join(', ') || 'N/A';
+                    return (
+                      <div
+                        key={img.id}
+                        className="gallery-card"
+                        onClick={() => setSelectedImage(img)}
+                      >
+                        <img src={img.url} alt="AI Art" className="gallery-card-img" />
+                        {user?.role !== 'admin' && img.favorite && (
+                          <span className="badge-rare-unlock" style={{ top: '12px', left: '12px', scale: '0.85', transformOrigin: 'top left', position: 'absolute', zIndex: 10 }}>
+                            <Award size={12} /> RARE ART
+                          </span>
+                        )}
+                        <div className="gallery-card-overlay">
+                          <p className="gallery-card-prompt">{img.prompt}</p>
+                          <div className="gallery-card-meta">
+                            <span className="gallery-card-actress">{actressNames}</span>
+                            <button
+                              className={`gallery-card-favorite-btn ${isImgFavorite(img.id) ? 'favorited' : ''}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleToggleFavorite(img.id);
+                              }}
+                            >
+                              <Heart size={20} fill={isImgFavorite(img.id) ? '#ef4444' : 'none'} />
+                            </button>
+                          </div>
                         </div>
                       </div>
+                    );
+                  })}
+                </div>
+
+                {/* Pagination Controls */}
+                {totalImgPages > 1 && (
+                  <div style={{ marginTop: '2rem' }}>
+                    <div className="pagination-outer">
+                      <div className="pagination-container">
+                        <button
+                          className="pagination-btn"
+                          disabled={actressImgPage === 1}
+                          onClick={() => {
+                            setActressImgPage(prev => Math.max(prev - 1, 1));
+                          }}
+                          aria-label="Previous Page"
+                        >
+                          <ChevronLeft size={18} />
+                        </button>
+
+                        {getActressImgPageNumbers().map((page, index) => {
+                          if (page === 'ellipsis1' || page === 'ellipsis2') {
+                            return (
+                              <span key={`ellipsis-${index}`} className="pagination-ellipsis">
+                                ...
+                              </span>
+                            );
+                          }
+
+                          return (
+                            <button
+                              key={page}
+                              className={`pagination-btn ${actressImgPage === page ? 'active' : ''}`}
+                              onClick={() => {
+                                setActressImgPage(page);
+                              }}
+                            >
+                              {page}
+                            </button>
+                          );
+                        })}
+
+                        <button
+                          className="pagination-btn"
+                          disabled={actressImgPage === totalImgPages}
+                          onClick={() => {
+                            setActressImgPage(prev => Math.min(prev + 1, totalImgPages));
+                          }}
+                          aria-label="Next Page"
+                        >
+                          <ChevronRight size={18} />
+                        </button>
+                      </div>
+
+                      <div className="pagination-goto">
+                        <span className="pagination-goto-label">Go to</span>
+                        <input
+                          type="number"
+                          min="1"
+                          max={totalImgPages}
+                          value={goToActImgPage}
+                          onChange={(e) => setGoToActImgPage(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              const pageNum = parseInt(goToActImgPage, 10);
+                              if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= totalImgPages) {
+                                setActressImgPage(pageNum);
+                                setGoToActImgPage('');
+                              }
+                            }
+                          }}
+                          placeholder="Page"
+                          className="pagination-goto-input"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const pageNum = parseInt(goToActImgPage, 10);
+                            if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= totalImgPages) {
+                              setActressImgPage(pageNum);
+                              setGoToActImgPage('');
+                            }
+                          }}
+                          className="pagination-goto-btn"
+                          disabled={!goToActImgPage || isNaN(parseInt(goToActImgPage, 10)) || parseInt(goToActImgPage, 10) < 1 || parseInt(goToActImgPage, 10) > totalImgPages}
+                        >
+                          Go
+                        </button>
+                      </div>
                     </div>
-                  );
-                })}
-              </div>
+                    <div className="pagination-info">
+                      Showing {startImgIndex + 1}–{Math.min(startImgIndex + IMAGES_PER_PAGE, actressImages.length)} of {actressImages.length} graphics
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </>

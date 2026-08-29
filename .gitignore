@@ -34,3 +34,5 @@ Thumbs.db
 
 # local uploads
 /public/uploads/
+/public/ai-graphics/*
+
