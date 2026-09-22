@@ -880,36 +880,36 @@ export default function GalleryPage() {
                     )}
                   </div>
 
-                    {user?.role === 'admin' && (
-                      <div style={{ display: 'flex', gap: '0.75rem', width: '100%' }}>
-                        <button
-                          className="btn btn-secondary"
-                          style={{ flex: 1 }}
-                          onClick={() => handleOpenEditModal(selectedImage)}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          className="btn btn-secondary"
-                          style={{ flex: 1 }}
-                          onClick={() => handleOpenReplicateModal(selectedImage)}
-                        >
-                          Replicate
-                        </button>
-                        <button
-                          className="btn btn-outline"
-                          style={{ flex: 1, borderColor: '#ef4444', color: '#ef4444' }}
-                          onClick={() => handleDeleteImage(selectedImage.id)}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                  {user?.role === 'admin' && (
+                    <div style={{ display: 'flex', gap: '0.75rem', width: '100%' }}>
+                      <button
+                        className="btn btn-secondary"
+                        style={{ flex: 1 }}
+                        onClick={() => handleOpenEditModal(selectedImage)}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        className="btn btn-secondary"
+                        style={{ flex: 1 }}
+                        onClick={() => handleOpenReplicateModal(selectedImage)}
+                      >
+                        Replicate
+                      </button>
+                      <button
+                        className="btn btn-outline"
+                        style={{ flex: 1, borderColor: '#ef4444', color: '#ef4444' }}
+                        onClick={() => handleDeleteImage(selectedImage.id)}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
           </div>
+        </div>
       )}
 
       {/* --- EDIT IMAGE MODAL --- */}
